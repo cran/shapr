@@ -1,7 +1,7 @@
-d5afaea573febef5f0c4feac1e22844c *DESCRIPTION
+75cefd0bf88f0e283f06fd26b6d3fdf3 *DESCRIPTION
 2011132170e6f3f5148c3b16734f89c7 *LICENSE
 4862a74a5e62f86cad14a2ef6741e773 *NAMESPACE
-831dcb7a9717a95fe61cbdfa67355710 *NEWS.md
+430400d2533dbda41fdb9a082c6b08a3 *NEWS.md
 522624c996a1ec565226f0f9b5ab7b57 *R/RcppExports.R
 11b8c4d12670942bf40559df72b6a362 *R/explanation.R
 940907f4e46aafe1e0def0c16fcf23aa *R/features.R
@@ -15,8 +15,8 @@ baec6ce45974d64b3760b2d7ff0ac79e *R/shapr-package.R
 6a1efefb8f6a8b732f4fcb440e94ec98 *R/transformation.R
 66afe674dbaf092042b794ba2d4a1d72 *R/utils.R
 e0157cf9d8732850dea277413aa1bd54 *R/zzz.R
-c1b905185bb5afbd70c7b535029a4161 *README.md
-2a5de5a8ecf5124eca04696d66a210f1 *build/vignette.rds
+6f187fef2942276c06f0e8413c465d7a *README.md
+f7c939eee0b63f10e2ab612c29437e82 *build/vignette.rds
 a6425e5d461626ffb72f12efdd8bf313 *inst/REFERENCES.bib
 a4f92af6ee6f669865ec63de5bea524d *inst/doc/understanding_shapr.R
 8a717c4a26513db14783f6fab4265881 *inst/doc/understanding_shapr.Rmd
@@ -42,7 +42,7 @@ fc6e4582fe2de2436c01e90366e69baf *man/figures/NR-logo_utvidet_r32g60b136_small.p
 55cd690447c3dfd6d89a3edd294d45a6 *man/gaussian_transform.Rd
 17dba6a6e956ea9e3b362e798e264f4f *man/gaussian_transform_separate.Rd
 e062beb106b2388490739d305abdb436 *man/get_list_approaches.Rd
-acf3e5964e4ef299dd5faa0875dfb029 *man/hat_matrix_cpp.Rd
+7b0cc50c22ffaf7ef392e9a3aef267cc *man/hat_matrix_cpp.Rd
 5740abc4b49ff1c86ec72181afb7dd2e *man/inv_gaussian_transform.Rd
 5f81fe7a98692c78cfb5772275bf4eca *man/mahalanobis_distance_cpp.Rd
 a252f77f049ec711899b32bec83c1d56 *man/model_type.Rd
@@ -50,7 +50,7 @@ a252f77f049ec711899b32bec83c1d56 *man/model_type.Rd
 7eda581cba8a023afc5d60d3d54fb9c5 *man/observation_impute_cpp.Rd
 b027594d188405a6b620b6d794c05f7e *man/plot.shapr.Rd
 051316dc789d2fd1390f2156b6cdd10d *man/predict_model.Rd
-aaddd21fad22d935244e7546591b4416 *man/prediction.Rd
+3dcb6baee0fad578c227aa61de8073a3 *man/prediction.Rd
 2a1b52b256dfb775faa26f5c9840488c *man/prepare_data.Rd
 bf81db80678734cdca19df8038d7eb72 *man/rss_cpp.Rd
 03420b9a12e27df7aad2e54a64760ffd *man/sample_combinations.Rd
@@ -64,7 +64,7 @@ bf81db80678734cdca19df8038d7eb72 *man/rss_cpp.Rd
 e4a9a47c4a3aca98677ab8b16336e5de *src/Makevars
 e4a9a47c4a3aca98677ab8b16336e5de *src/Makevars.win
 3013c1980d095678c7f9d220976f2b61 *src/RcppExports.cpp
-f80e6e8eb15507e81cadc10975b7bbf6 *src/distance.cpp
+c04fc212e14eca247af834a4a6c6e87e *src/distance.cpp
 fd3479f16392aac8f2b516b098f54115 *src/features.cpp
 4c19036ef9f8aeb4802a7cd15ff15fc0 *src/impute_data.cpp
 d56a7eb073eb4d088072afb3b79a4c09 *src/weighted_matrix.cpp
