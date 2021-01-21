@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ---- include = FALSE----------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -6,10 +6,10 @@ knitr::opts_chunk$set(
   fig.height = 3
 )
 
-## ----setup, include=FALSE, warning=FALSE--------------------------------------
+## ----setup, include=FALSE, warning=FALSE---------------------------------
 library(shapr)
 
-## ---- warning=FALSE-----------------------------------------------------------
+## ---- warning=FALSE------------------------------------------------------
 library(xgboost)
 library(shapr)
 
@@ -52,7 +52,7 @@ print(explanation$dt)
 # Plot the resulting explanations for observations 1 and 6
 plot(explanation, plot_phi0 = FALSE, index_x_test = c(1, 6))
 
-## -----------------------------------------------------------------------------
+## ------------------------------------------------------------------------
 # Use the Gaussian approach
 explanation_gaussian <- explain(
   x_test,
@@ -64,7 +64,7 @@ explanation_gaussian <- explain(
 # Plot the resulting explanations for observations 1 and 6
 plot(explanation_gaussian, plot_phi0 = FALSE, index_x_test = c(1, 6))
 
-## -----------------------------------------------------------------------------
+## ------------------------------------------------------------------------
 # Use the Gaussian copula approach
 explanation_copula <- explain(
   x_test,
@@ -77,7 +77,7 @@ explanation_copula <- explain(
 # the no-covariate effect
 plot(explanation_copula, plot_phi0 = FALSE, index_x_test = c(1, 6))
 
-## -----------------------------------------------------------------------------
+## ------------------------------------------------------------------------
 # Use the combined approach
 explanation_combined <- explain(
   x_test,
@@ -90,7 +90,7 @@ explanation_combined <- explain(
 # the no-covariate effect
 plot(explanation_combined, plot_phi0 = FALSE, index_x_test = c(1, 6))
 
-## -----------------------------------------------------------------------------
+## ------------------------------------------------------------------------
 library(gbm)
 
 form <- as.formula(paste0(y_var, "~", paste0(x_var, collapse = "+")))
