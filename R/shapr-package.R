@@ -3,9 +3,19 @@
 #'
 #' @importFrom graphics plot hist rect
 #'
-#' @importFrom utils head tail
+#' @importFrom utils head tail methods
 #'
 #' @importFrom stats predict
+#'
+#' @importFrom stats as.formula
+#'
+#' @importFrom stats model.matrix
+#'
+#' @importFrom stats model.frame
+#'
+#' @importFrom stats setNames
+#'
+#' @importFrom stats contrasts
 #'
 #' @importFrom Rcpp sourceCpp
 #'

@@ -1,7 +1,6 @@
 context("test-observations.R")
 
 test_that("Test observation_impute", {
-
   if (requireNamespace("MASS", quietly = TRUE)) {
     # Examples
     n <- 20

@@ -5,7 +5,9 @@
 \alias{explain.empirical}
 \alias{explain.gaussian}
 \alias{explain.copula}
+\alias{explain.ctree}
 \alias{explain.combined}
+\alias{explain.ctree_comb_mincrit}
 \title{Explain the output of machine learning models with more accurately estimated Shapley values}
 \usage{
 explain(x, explainer, approach, prediction_zero, ...)
@@ -36,6 +38,18 @@ explain(x, explainer, approach, prediction_zero, ...)
 
 \method{explain}{copula}(x, explainer, approach, prediction_zero, ...)
 
+\method{explain}{ctree}(
+  x,
+  explainer,
+  approach,
+  prediction_zero,
+  mincriterion = 0.95,
+  minsplit = 20,
+  minbucket = 7,
+  sample = TRUE,
+  ...
+)
+
 \method{explain}{combined}(
   x,
   explainer,
@@ -45,6 +59,8 @@ explain(x, explainer, approach, prediction_zero, ...)
   cov_mat = NULL,
   ...
 )
+
+\method{explain}{ctree_comb_mincrit}(x, explainer, approach, prediction_zero, mincriterion, ...)
 }
 \arguments{
 \item{x}{A matrix or data.frame. Contains the the features, whose
@@ -55,7 +71,8 @@ See \code{\link{shapr}}.}
 
 \item{approach}{Character vector of length \code{1} or \code{n_features}.
 \code{n_features} equals the total number of features in the model. All elements should
-either be \code{"gaussian"}, \code{"copula"} or \code{"empirical"}. See details for more information.}
+either be \code{"gaussian"}, \code{"copula"}, \code{"empirical"}, or \code{"ctree"}. See details for more
+information.}
 
 \item{prediction_zero}{Numeric. The prediction value for unseen data, typically equal to the mean of
 the response.}
@@ -90,6 +107,22 @@ when \code{approach = "gaussian"}.}
 \item{cov_mat}{Numeric matrix. (Optional) Containing the covariance matrix of the data
 generating distribution. \code{NULL} means it is estimated from the data if needed
 (in the Gaussian approach).}
+
+\item{mincriterion}{Numeric value or vector where length of vector is the number of features in model.
+Value is equal to 1 - alpha where alpha is the nominal level of the conditional
+independence tests.
+If it is a vector, this indicates which mincriterion to use
+when conditioning on various numbers of features.}
+
+\item{minsplit}{Numeric value. Equal to the value that the sum of the left and right daughter nodes need to exceed.}
+
+\item{minbucket}{Numeric value. Equal to the minimum sum of weights in a terminal node.}
+
+\item{sample}{Boolean. If TRUE, then the method always samples \code{n_samples} from the leaf (with replacement).
+If FALSE and the number of obs in the leaf is less than \code{n_samples}, the method will take all observations
+in the leaf. If FALSE and the number of obs in the leaf is more than \code{n_samples}, the method will sample
+\code{n_samples} (with replacement). This means that there will always be sampling in the leaf unless
+\code{sample} = FALSE AND the number of obs in the node is less than \code{n_samples}.}
 }
 \value{
 Object of class \code{c("shapr", "list")}. Contains the following items:
@@ -125,11 +158,11 @@ such as the mean of the predictions in the training data are also reasonable.
 Explain the output of machine learning models with more accurately estimated Shapley values
 }
 \details{
-The most important thing to notice is that \code{shapr} has implemented three different
+The most important thing to notice is that \code{shapr} has implemented four different
 approaches for estimating the conditional distributions of the data, namely \code{"empirical"},
-\code{"gaussian"} and \code{"copula"}.
+\code{"gaussian"}, \code{"copula"} and \code{"ctree"}.
 
-In addition to this the user will also have the option of combining the three approaches.
+In addition, the user also has the option of combining the four approaches.
 E.g. if you're in a situation where you have trained a model the consists of 10 features,
 and you'd like to use the \code{"gaussian"} approach when you condition on a single feature,
 the \code{"empirical"} approach if you condition on 2-5 features, and \code{"copula"} version
@@ -140,44 +173,62 @@ when conditioning on \code{i} features.
 }
 \examples{
 if (requireNamespace("MASS", quietly = TRUE)) {
-# Load example data
-data("Boston", package = "MASS")
+  # Load example data
+  data("Boston", package = "MASS")
 
-# Split data into test- and training data
-x_train <- head(Boston, -3)
-x_test <- tail(Boston, 3)
+  # Split data into test- and training data
+  x_train <- head(Boston, -3)
+  x_test <- tail(Boston, 3)
 
-# Fit a linear model
-model <- lm(medv ~ lstat + rm + dis + indus, data = x_train)
+  # Fit a linear model
+  model <- lm(medv ~ lstat + rm + dis + indus, data = x_train)
 
-# Create an explainer object
-explainer <- shapr(x_train, model)
+  # Create an explainer object
+  explainer <- shapr(x_train, model)
 
-# Explain predictions
-p <- mean(x_train$medv)
+  # Explain predictions
+  p <- mean(x_train$medv)
 
-# Empirical approach
-explain1 <- explain(x_test, explainer, approach = "empirical", prediction_zero = p, n_samples = 1e2)
+  # Empirical approach
+  explain1 <- explain(x_test, explainer,
+    approach = "empirical",
+    prediction_zero = p, n_samples = 1e2
+  )
 
-# Gaussian approach
-explain2 <- explain(x_test, explainer, approach = "gaussian", prediction_zero = p, n_samples = 1e2)
+  # Gaussian approach
+  explain2 <- explain(x_test, explainer,
+    approach = "gaussian",
+    prediction_zero = p, n_samples = 1e2
+  )
 
-# Gaussian copula approach
-explain3 <- explain(x_test, explainer, approach = "copula", prediction_zero = p, n_samples = 1e2)
+  # Gaussian copula approach
+  explain3 <- explain(x_test, explainer,
+    approach = "copula",
+    prediction_zero = p, n_samples = 1e2
+  )
 
-# Combined approach
-approach <- c("gaussian", "gaussian", "empirical", "empirical")
-explain4 <- explain(x_test, explainer, approach = approach, prediction_zero = p, n_samples = 1e2)
+  # ctree approach
+  explain4 <- explain(x_test, explainer,
+    approach = "ctree",
+    prediction_zero = p
+  )
 
-# Print the Shapley values
-print(explain1$dt)
+  # Combined approach
+  approach <- c("gaussian", "gaussian", "empirical", "empirical")
+  explain5 <- explain(x_test, explainer,
+    approach = approach,
+    prediction_zero = p, n_samples = 1e2
+  )
 
-# Plot the results
-if (requireNamespace("ggplot2", quietly = TRUE)) {
-plot(explain1)
-}
+  # Print the Shapley values
+  print(explain1$dt)
+
+  # Plot the results
+  if (requireNamespace("ggplot2", quietly = TRUE)) {
+    plot(explain1)
+  }
 }
 }
 \author{
-Camilla Lingjaerde, Nikolai Sellereite
+Camilla Lingjaerde, Nikolai Sellereite, Martin Jullum, Annabelle Redelmeier
 }

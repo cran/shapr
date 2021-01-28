@@ -8,18 +8,19 @@
 #'
 #' @param approach Character vector of length \code{1} or \code{n_features}.
 #' \code{n_features} equals the total number of features in the model. All elements should
-#' either be \code{"gaussian"}, \code{"copula"} or \code{"empirical"}. See details for more information.
+#' either be \code{"gaussian"}, \code{"copula"}, \code{"empirical"}, or \code{"ctree"}. See details for more
+#' information.
 #'
 #' @param prediction_zero Numeric. The prediction value for unseen data, typically equal to the mean of
 #' the response.
 #'
 #' @param ... Additional arguments passed to \code{\link{prepare_data}}
 #'
-#' @details The most important thing to notice is that \code{shapr} has implemented three different
+#' @details The most important thing to notice is that \code{shapr} has implemented four different
 #' approaches for estimating the conditional distributions of the data, namely \code{"empirical"},
-#' \code{"gaussian"} and \code{"copula"}.
+#' \code{"gaussian"}, \code{"copula"} and \code{"ctree"}.
 #'
-#' In addition to this the user will also have the option of combining the three approaches.
+#' In addition, the user also has the option of combining the four approaches.
 #' E.g. if you're in a situation where you have trained a model the consists of 10 features,
 #' and you'd like to use the \code{"gaussian"} approach when you condition on a single feature,
 #' the \code{"empirical"} approach if you condition on 2-5 features, and \code{"copula"} version
@@ -59,82 +60,94 @@
 #'
 #' @export
 #'
-#' @author Camilla Lingjaerde, Nikolai Sellereite
+#' @author Camilla Lingjaerde, Nikolai Sellereite, Martin Jullum, Annabelle Redelmeier
 #'
 #' @examples
 #' if (requireNamespace("MASS", quietly = TRUE)) {
-#' # Load example data
-#' data("Boston", package = "MASS")
+#'   # Load example data
+#'   data("Boston", package = "MASS")
 #'
-#' # Split data into test- and training data
-#' x_train <- head(Boston, -3)
-#' x_test <- tail(Boston, 3)
+#'   # Split data into test- and training data
+#'   x_train <- head(Boston, -3)
+#'   x_test <- tail(Boston, 3)
 #'
-#' # Fit a linear model
-#' model <- lm(medv ~ lstat + rm + dis + indus, data = x_train)
+#'   # Fit a linear model
+#'   model <- lm(medv ~ lstat + rm + dis + indus, data = x_train)
 #'
-#' # Create an explainer object
-#' explainer <- shapr(x_train, model)
+#'   # Create an explainer object
+#'   explainer <- shapr(x_train, model)
 #'
-#' # Explain predictions
-#' p <- mean(x_train$medv)
+#'   # Explain predictions
+#'   p <- mean(x_train$medv)
 #'
-#' # Empirical approach
-#' explain1 <- explain(x_test, explainer, approach = "empirical", prediction_zero = p, n_samples = 1e2)
+#'   # Empirical approach
+#'   explain1 <- explain(x_test, explainer,
+#'     approach = "empirical",
+#'     prediction_zero = p, n_samples = 1e2
+#'   )
 #'
-#' # Gaussian approach
-#' explain2 <- explain(x_test, explainer, approach = "gaussian", prediction_zero = p, n_samples = 1e2)
+#'   # Gaussian approach
+#'   explain2 <- explain(x_test, explainer,
+#'     approach = "gaussian",
+#'     prediction_zero = p, n_samples = 1e2
+#'   )
 #'
-#' # Gaussian copula approach
-#' explain3 <- explain(x_test, explainer, approach = "copula", prediction_zero = p, n_samples = 1e2)
+#'   # Gaussian copula approach
+#'   explain3 <- explain(x_test, explainer,
+#'     approach = "copula",
+#'     prediction_zero = p, n_samples = 1e2
+#'   )
 #'
-#' # Combined approach
-#' approach <- c("gaussian", "gaussian", "empirical", "empirical")
-#' explain4 <- explain(x_test, explainer, approach = approach, prediction_zero = p, n_samples = 1e2)
+#'   # ctree approach
+#'   explain4 <- explain(x_test, explainer,
+#'     approach = "ctree",
+#'     prediction_zero = p
+#'   )
 #'
-#' # Print the Shapley values
-#' print(explain1$dt)
+#'   # Combined approach
+#'   approach <- c("gaussian", "gaussian", "empirical", "empirical")
+#'   explain5 <- explain(x_test, explainer,
+#'     approach = approach,
+#'     prediction_zero = p, n_samples = 1e2
+#'   )
 #'
-#' # Plot the results
-#' if (requireNamespace("ggplot2", quietly = TRUE)) {
-#' plot(explain1)
-#' }
+#'   # Print the Shapley values
+#'   print(explain1$dt)
+#'
+#'   # Plot the results
+#'   if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'     plot(explain1)
+#'   }
 #' }
 explain <- function(x, explainer, approach, prediction_zero, ...) {
+  extras <- list(...)
 
   # Check input for x
   if (!is.matrix(x) & !is.data.frame(x)) {
-    stop("x should be a matrix or a dataframe.")
+    stop("x should be a matrix or a data.frame/data.table.")
   }
 
   # Check input for approach
   if (!(is.vector(approach) &&
-        is.atomic(approach) &&
-        (length(approach) == 1 | length(approach) == length(explainer$feature_labels)) &&
-        all(is.element(approach, c("empirical", "gaussian", "copula"))))
+    is.atomic(approach) &&
+    (length(approach) == 1 | length(approach) == length(explainer$feature_list$labels)) &&
+    all(is.element(approach, c("empirical", "gaussian", "copula", "ctree"))))
   ) {
     stop(
       paste(
         "It seems that you passed a non-valid value for approach.",
-        "It should be either 'empirical', 'gaussian', 'copula' or",
+        "It should be either 'empirical', 'gaussian', 'copula', 'ctree' or",
         "a vector of length=ncol(x) with only the above characters."
       )
     )
   }
 
-  # Check that x contains correct variables
-  if (!all(explainer$feature_labels %in% colnames(x))) {
-    stop(
-      paste0(
-        "\nThe test data, x, does not contain all features necessary for\n",
-        "generating predictions. Please modify x so that all labels given\n",
-        "by explainer$feature_labels is present in colnames(x)."
-      )
-    )
-  }
+
 
   if (length(approach) > 1) {
     class(x) <- "combined"
+  } else if (length(extras$mincriterion) > 1) {
+    class(x) <- "ctree_comb_mincrit"
   } else {
     class(x) <- approach
   }
@@ -172,7 +185,7 @@ explain.empirical <- function(x, explainer, approach, prediction_zero,
                               start_aicc = 0.1, w_threshold = 0.95, ...) {
 
   # Add arguments to explainer object
-  explainer$x_test <- explainer_x_test(x, explainer$feature_labels)
+  explainer$x_test <- as.matrix(preprocess_data(x, explainer$feature_list)$x_dt)
   explainer$approach <- approach
   explainer$type <- type
   explainer$fixed_sigma_vec <- fixed_sigma_vec
@@ -183,7 +196,9 @@ explain.empirical <- function(x, explainer, approach, prediction_zero,
 
   # Generate data
   dt <- prepare_data(explainer, ...)
-  if (!is.null(explainer$return)) return(dt)
+  if (!is.null(explainer$return)) {
+    return(dt)
+  }
 
   # Predict
   r <- prediction(dt, prediction_zero, explainer)
@@ -204,8 +219,9 @@ explain.empirical <- function(x, explainer, approach, prediction_zero,
 #' @export
 explain.gaussian <- function(x, explainer, approach, prediction_zero, mu = NULL, cov_mat = NULL, ...) {
 
+
   # Add arguments to explainer object
-  explainer$x_test <- explainer_x_test(x, explainer$feature_labels)
+  explainer$x_test <- as.matrix(preprocess_data(x, explainer$feature_list)$x_dt)
   explainer$approach <- approach
 
   # If mu is not provided directly, use mean of training data
@@ -230,7 +246,9 @@ explain.gaussian <- function(x, explainer, approach, prediction_zero, mu = NULL,
 
   # Generate data
   dt <- prepare_data(explainer, ...)
-  if (!is.null(explainer$return)) return(dt)
+  if (!is.null(explainer$return)) {
+    return(dt)
+  }
 
   # Predict
   r <- prediction(dt, prediction_zero, explainer)
@@ -243,7 +261,7 @@ explain.gaussian <- function(x, explainer, approach, prediction_zero, mu = NULL,
 explain.copula <- function(x, explainer, approach, prediction_zero, ...) {
 
   # Setup
-  explainer$x_test <- explainer_x_test(x, explainer$feature_labels)
+  explainer$x_test <- as.matrix(preprocess_data(x, explainer$feature_list)$x_dt)
   explainer$approach <- approach
 
   # Prepare transformed data
@@ -273,7 +291,59 @@ explain.copula <- function(x, explainer, approach, prediction_zero, ...) {
   }
   # Generate data
   dt <- prepare_data(explainer, x_test_gaussian = x_test_gaussian, ...)
-  if (!is.null(explainer$return)) return(dt)
+  if (!is.null(explainer$return)) {
+    return(dt)
+  }
+
+  # Predict
+  r <- prediction(dt, prediction_zero, explainer)
+
+  return(r)
+}
+
+
+#' @param mincriterion Numeric value or vector where length of vector is the number of features in model.
+#' Value is equal to 1 - alpha where alpha is the nominal level of the conditional
+#' independence tests.
+#' If it is a vector, this indicates which mincriterion to use
+#' when conditioning on various numbers of features.
+#'
+#' @param minsplit Numeric value. Equal to the value that the sum of the left and right daughter nodes need to exceed.
+#'
+#' @param minbucket Numeric value. Equal to the minimum sum of weights in a terminal node.
+#'
+#' @param sample Boolean. If TRUE, then the method always samples \code{n_samples} from the leaf (with replacement).
+#' If FALSE and the number of obs in the leaf is less than \code{n_samples}, the method will take all observations
+#' in the leaf. If FALSE and the number of obs in the leaf is more than \code{n_samples}, the method will sample
+#' \code{n_samples} (with replacement). This means that there will always be sampling in the leaf unless
+#' \code{sample} = FALSE AND the number of obs in the node is less than \code{n_samples}.
+#
+#' @rdname explain
+#' @name explain
+#'
+#' @export
+explain.ctree <- function(x, explainer, approach, prediction_zero,
+                          mincriterion = 0.95, minsplit = 20,
+                          minbucket = 7, sample = TRUE, ...) {
+  # Checks input argument
+  if (!is.matrix(x) & !is.data.frame(x)) {
+    stop("x should be a matrix or a dataframe.")
+  }
+
+  # Add arguments to explainer object
+  explainer$x_test <- preprocess_data(x, explainer$feature_list)$x_dt
+  explainer$approach <- approach
+  explainer$mincriterion <- mincriterion
+  explainer$minsplit <- minsplit
+  explainer$minbucket <- minbucket
+  explainer$sample <- sample
+
+  # Generate data
+  dt <- prepare_data(explainer, ...)
+
+  if (!is.null(explainer$return)) {
+    return(dt)
+  }
 
   # Predict
   r <- prediction(dt, prediction_zero, explainer)
@@ -282,25 +352,25 @@ explain.copula <- function(x, explainer, approach, prediction_zero, ...) {
 }
 
 #' @rdname explain
+#' @name explain
+#'
 #' @export
-explain.combined <- function(x, explainer, approach, prediction_zero, mu = NULL, cov_mat = NULL, ...) {
-
+explain.combined <- function(x, explainer, approach, prediction_zero,
+                             mu = NULL, cov_mat = NULL, ...) {
   # Get indices of combinations
   l <- get_list_approaches(explainer$X$n_features, approach)
   explainer$return <- TRUE
-  explainer$x_test <- explainer_x_test(x, explainer$feature_labels)
+  explainer$x_test <- as.matrix(preprocess_data(x, explainer$feature_list)$x_dt)
 
   dt_l <- list()
   for (i in seq_along(l)) {
     dt_l[[i]] <- explain(x, explainer, approach = names(l)[i], prediction_zero, index_features = l[[i]], ...)
   }
-
   dt <- data.table::rbindlist(dt_l, use.names = TRUE)
 
   r <- prediction(dt, prediction_zero, explainer)
 
   return(r)
-
 }
 
 #' Helper function used in \code{\link{explain.combined}}
@@ -318,7 +388,6 @@ explain.combined <- function(x, explainer, approach, prediction_zero, mu = NULL,
 #' @return List
 #'
 get_list_approaches <- function(n_features, approach) {
-
   l <- list()
   approach[length(approach)] <- approach[length(approach) - 1]
 
@@ -338,19 +407,52 @@ get_list_approaches <- function(n_features, approach) {
   if (length(x) > 0) {
     if (approach[1] == "copula") x <- c(0, x)
     l$copula <- which(n_features %in% x)
+  }
 
+  x <- which(approach == "ctree")
+  if (length(x) > 0) {
+    if (approach[1] == "ctree") x <- c(0, x)
+    l$ctree <- which(n_features %in% x)
   }
   return(l)
 }
 
+
+#' @rdname explain
+#' @name explain
+#'
+#' @export
+explain.ctree_comb_mincrit <- function(x, explainer, approach,
+                                       prediction_zero, mincriterion, ...) {
+
+  # Get indices of combinations
+  l <- get_list_ctree_mincrit(explainer$X$n_features, mincriterion)
+  explainer$return <- TRUE # this is important so that you don't use prediction() twice
+  explainer$x_test <- as.matrix(x)
+
+  dt_l <- list()
+  for (i in seq_along(l)) {
+    dt_l[[i]] <- explain(x, explainer, approach, prediction_zero,
+      index_features = l[[i]],
+      mincriterion = as.numeric(names(l[i])), ...
+    )
+  }
+
+  dt <- data.table::rbindlist(dt_l, use.names = TRUE)
+
+  r <- prediction(dt, prediction_zero, explainer)
+  return(r)
+}
+
 #' @keywords internal
-explainer_x_test <- function(x_test, feature_labels) {
+get_list_ctree_mincrit <- function(n_features, mincriterion) {
+  l <- list()
 
-  # Remove variables that were not used for training
-  x <- data.table::as.data.table(x_test)
-  cnms_remove <- setdiff(colnames(x), feature_labels)
-  if (length(cnms_remove) > 0) x[, (cnms_remove) := NULL]
-  data.table::setcolorder(x, feature_labels)
-
-  return(as.matrix(x))
+  for (k in 1:length(unique(mincriterion))) {
+    x <- which(mincriterion == unique(mincriterion)[k])
+    nn <- as.character(unique(mincriterion)[k])
+    if (length(l) == 0) x <- c(0, x)
+    l[[nn]] <- which(n_features %in% x)
+  }
+  return(l)
 }
