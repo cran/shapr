@@ -1,29 +1,31 @@
+#define ARMA_WARN_LEVEL 1 // Disables the warning regarding approximate solution for small n_coalitions
 #include <RcppArmadillo.h>
 using namespace Rcpp;
 
 //' Calculate weight matrix
 //'
-//' @param features List. Each of the elements equals an integer
-//' vector representing a valid combination of features.
-//' @param m Integer. Number of features
-//' @param n Integer. Number of combinations
-//' @param w Numeric vector of length \code{n}, i.e. \code{w[i]} equals
-//' the Shapley weight of feature combination \code{i}, represented by
-//' \code{features[[i]]}.
+//' @param coalitions List.
+//' Each of the elements equals an integer vector representing a valid combination of features/feature groups.
+//' @param m Integer.
+//' Number of features/feature groups.
+//' @param n Integer.
+//' Number of combinations.
+//' @param w Numeric vector
+//' Should have length \code{n}. \code{w[i]} equals the Shapley weight of feature/feature group combination \code{i},
+//' represented by \code{coalitions[[i]]}.
 //'
-//' @export
 //' @keywords internal
 //'
 //' @return Matrix of dimension n x m + 1
-//' @author Nikolai Sellereite
+//' @author Nikolai Sellereite, Martin Jullum
 // [[Rcpp::export]]
-arma::mat weight_matrix_cpp(List features, int m, int n, NumericVector w){
+arma::mat weight_matrix_cpp(List coalitions, int m, int n, NumericVector w){
 
     // Note that Z is a n x (m + 1) matrix, where m is the number
-    // of unique features. All elements in the first column are equal to 1.
-    // For j > 0, Z(i, j) = 1 if and only if feature j is present in
-    // the ith combination of features. In example, if Z(i, j) = 1 we know that
-    // j is present in features[i].
+    // of unique coalitions. All elements in the first column are equal to 1.
+    // For j > 0, Z(i, j) = 1 if and only if feature/feature group j is present in
+    // the ith combination of coalitions. In example, if Z(i, j) = 1 we know that
+    // j is present in coalitions[i].
 
     // Note that w represents the diagonal in W, where W is a diagoanl
     // n x n matrix.
@@ -40,8 +42,8 @@ arma::mat weight_matrix_cpp(List features, int m, int n, NumericVector w){
     // i.e. section 3.2.
 
     // Define objects
-    int n_features;
-    IntegerVector feature_vec;
+    int n_elements;
+    IntegerVector subset_vec;
     arma::mat Z(n, m + 1, arma::fill::zeros), X(n, m + 1, arma::fill::zeros);
     arma::mat R(m + 1, n, arma::fill::zeros);
 
@@ -51,12 +53,12 @@ arma::mat weight_matrix_cpp(List features, int m, int n, NumericVector w){
         // Set all elements in the first column equal to 1
         Z(i, 0) = 1;
 
-        // Extract features combinations
-        feature_vec = features[i];
-        n_features = feature_vec.length();
-        if (n_features > 0) {
-            for (int j = 0; j < n_features; j++)
-                Z(i, feature_vec[j]) = 1;
+        // Extract coalitions
+        subset_vec = coalitions[i];
+        n_elements = subset_vec.length();
+        if (n_elements > 0) {
+            for (int j = 0; j < n_elements; j++)
+                Z(i, subset_vec[j]) = 1;
         }
     }
 
@@ -69,37 +71,37 @@ arma::mat weight_matrix_cpp(List features, int m, int n, NumericVector w){
         }
     }
 
-    R = inv(X.t() * Z) * X.t();
+    R = solve(X.t() * Z, X.t());
 
     return R;
 }
 
-//' Get feature matrix
+//' Get coalition matrix
 //'
-//' @param features List
-//' @param m Positive integer. Total number of features
+//' @inheritParams weight_matrix_cpp
 //'
 //' @export
 //' @keywords internal
 //'
+//'
 //' @return Matrix
-//' @author Nikolai Sellereite
+//' @author Nikolai Sellereite, Martin Jullum
 // [[Rcpp::export]]
-NumericMatrix feature_matrix_cpp(List features, int m) {
+NumericMatrix coalition_matrix_cpp(List coalitions, int m) {
 
     // Define variables
-    int n_combinations;
-    n_combinations = features.length();
-    NumericMatrix A(n_combinations, m);
+    int n_coalitions;
+    n_coalitions = coalitions.length();
+    NumericMatrix A(n_coalitions, m);
 
     // Error-check
-    IntegerVector features_zero = features[0];
+    IntegerVector features_zero = coalitions[0];
     if (features_zero.length() > 0)
-        Rcpp::stop("The first element of features should be an empty vector, i.e. integer(0)");
+        Rcpp::stop("Internal error: The first element of coalitions should be an empty vector, i.e. integer(0)");
 
-    for (int i = 1; i < n_combinations; ++i) {
+    for (int i = 1; i < n_coalitions; ++i) {
 
-        NumericVector feature_vec = features[i];
+        NumericVector feature_vec = coalitions[i];
 
         for (int j = 0; j < feature_vec.length(); ++j) {
 

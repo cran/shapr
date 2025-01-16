@@ -80,71 +80,160 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// quantile_type7_cpp
+arma::vec quantile_type7_cpp(const arma::vec& x, const arma::vec& probs);
+RcppExport SEXP _shapr_quantile_type7_cpp(SEXP xSEXP, SEXP probsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type probs(probsSEXP);
+    rcpp_result_gen = Rcpp::wrap(quantile_type7_cpp(x, probs));
+    return rcpp_result_gen;
+END_RCPP
+}
+// inv_gaussian_transform_cpp
+arma::mat inv_gaussian_transform_cpp(const arma::mat& z, const arma::mat& x);
+RcppExport SEXP _shapr_inv_gaussian_transform_cpp(SEXP zSEXP, SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type z(zSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(inv_gaussian_transform_cpp(z, x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// prepare_data_copula_cpp
+arma::cube prepare_data_copula_cpp(const arma::mat& MC_samples_mat, const arma::mat& x_explain_mat, const arma::mat& x_explain_gaussian_mat, const arma::mat& x_train_mat, const arma::mat& S, const arma::vec& mu, const arma::mat& cov_mat);
+RcppExport SEXP _shapr_prepare_data_copula_cpp(SEXP MC_samples_matSEXP, SEXP x_explain_matSEXP, SEXP x_explain_gaussian_matSEXP, SEXP x_train_matSEXP, SEXP SSEXP, SEXP muSEXP, SEXP cov_matSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type MC_samples_mat(MC_samples_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_explain_mat(x_explain_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_explain_gaussian_mat(x_explain_gaussian_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_train_mat(x_train_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type cov_mat(cov_matSEXP);
+    rcpp_result_gen = Rcpp::wrap(prepare_data_copula_cpp(MC_samples_mat, x_explain_mat, x_explain_gaussian_mat, x_train_mat, S, mu, cov_mat));
+    return rcpp_result_gen;
+END_RCPP
+}
+// prepare_data_copula_cpp_caus
+arma::mat prepare_data_copula_cpp_caus(const arma::mat& MC_samples_mat, const arma::mat& x_explain_mat, const arma::mat& x_explain_gaussian_mat, const arma::mat& x_train_mat, const arma::mat& S, const arma::vec& mu, const arma::mat& cov_mat);
+RcppExport SEXP _shapr_prepare_data_copula_cpp_caus(SEXP MC_samples_matSEXP, SEXP x_explain_matSEXP, SEXP x_explain_gaussian_matSEXP, SEXP x_train_matSEXP, SEXP SSEXP, SEXP muSEXP, SEXP cov_matSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type MC_samples_mat(MC_samples_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_explain_mat(x_explain_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_explain_gaussian_mat(x_explain_gaussian_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_train_mat(x_train_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type cov_mat(cov_matSEXP);
+    rcpp_result_gen = Rcpp::wrap(prepare_data_copula_cpp_caus(MC_samples_mat, x_explain_mat, x_explain_gaussian_mat, x_train_mat, S, mu, cov_mat));
+    return rcpp_result_gen;
+END_RCPP
+}
+// prepare_data_gaussian_cpp
+arma::cube prepare_data_gaussian_cpp(const arma::mat& MC_samples_mat, const arma::mat& x_explain_mat, const arma::mat& S, const arma::vec& mu, const arma::mat& cov_mat);
+RcppExport SEXP _shapr_prepare_data_gaussian_cpp(SEXP MC_samples_matSEXP, SEXP x_explain_matSEXP, SEXP SSEXP, SEXP muSEXP, SEXP cov_matSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type MC_samples_mat(MC_samples_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_explain_mat(x_explain_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type cov_mat(cov_matSEXP);
+    rcpp_result_gen = Rcpp::wrap(prepare_data_gaussian_cpp(MC_samples_mat, x_explain_mat, S, mu, cov_mat));
+    return rcpp_result_gen;
+END_RCPP
+}
+// prepare_data_gaussian_cpp_caus
+arma::mat prepare_data_gaussian_cpp_caus(const arma::mat& MC_samples_mat, const arma::mat& x_explain_mat, const arma::mat& S, const arma::vec& mu, const arma::mat& cov_mat);
+RcppExport SEXP _shapr_prepare_data_gaussian_cpp_caus(SEXP MC_samples_matSEXP, SEXP x_explain_matSEXP, SEXP SSEXP, SEXP muSEXP, SEXP cov_matSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type MC_samples_mat(MC_samples_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type x_explain_mat(x_explain_matSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type S(SSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type cov_mat(cov_matSEXP);
+    rcpp_result_gen = Rcpp::wrap(prepare_data_gaussian_cpp_caus(MC_samples_mat, x_explain_mat, S, mu, cov_mat));
+    return rcpp_result_gen;
+END_RCPP
+}
 // mahalanobis_distance_cpp
-arma::cube mahalanobis_distance_cpp(Rcpp::List featureList, arma::mat Xtrain_mat, arma::mat Xtest_mat, arma::mat mcov, bool S_scale_dist);
-RcppExport SEXP _shapr_mahalanobis_distance_cpp(SEXP featureListSEXP, SEXP Xtrain_matSEXP, SEXP Xtest_matSEXP, SEXP mcovSEXP, SEXP S_scale_distSEXP) {
+arma::cube mahalanobis_distance_cpp(Rcpp::List featureList, arma::mat Xtrain_mat, arma::mat Xexplain_mat, arma::mat mcov, bool S_scale_dist);
+RcppExport SEXP _shapr_mahalanobis_distance_cpp(SEXP featureListSEXP, SEXP Xtrain_matSEXP, SEXP Xexplain_matSEXP, SEXP mcovSEXP, SEXP S_scale_distSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::List >::type featureList(featureListSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type Xtrain_mat(Xtrain_matSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Xtest_mat(Xtest_matSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Xexplain_mat(Xexplain_matSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type mcov(mcovSEXP);
     Rcpp::traits::input_parameter< bool >::type S_scale_dist(S_scale_distSEXP);
-    rcpp_result_gen = Rcpp::wrap(mahalanobis_distance_cpp(featureList, Xtrain_mat, Xtest_mat, mcov, S_scale_dist));
+    rcpp_result_gen = Rcpp::wrap(mahalanobis_distance_cpp(featureList, Xtrain_mat, Xexplain_mat, mcov, S_scale_dist));
     return rcpp_result_gen;
 END_RCPP
 }
-// sample_features_cpp
-List sample_features_cpp(int m, IntegerVector n_features);
-RcppExport SEXP _shapr_sample_features_cpp(SEXP mSEXP, SEXP n_featuresSEXP) {
+// sample_coalitions_cpp_str_paired
+CharacterVector sample_coalitions_cpp_str_paired(int m, IntegerVector n_coalitions, bool paired_shap_sampling);
+RcppExport SEXP _shapr_sample_coalitions_cpp_str_paired(SEXP mSEXP, SEXP n_coalitionsSEXP, SEXP paired_shap_samplingSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< int >::type m(mSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type n_features(n_featuresSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_features_cpp(m, n_features));
+    Rcpp::traits::input_parameter< IntegerVector >::type n_coalitions(n_coalitionsSEXP);
+    Rcpp::traits::input_parameter< bool >::type paired_shap_sampling(paired_shap_samplingSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_coalitions_cpp_str_paired(m, n_coalitions, paired_shap_sampling));
     return rcpp_result_gen;
 END_RCPP
 }
 // observation_impute_cpp
-NumericMatrix observation_impute_cpp(IntegerVector index_xtrain, IntegerVector index_s, NumericMatrix xtrain, NumericMatrix xtest, IntegerMatrix S);
-RcppExport SEXP _shapr_observation_impute_cpp(SEXP index_xtrainSEXP, SEXP index_sSEXP, SEXP xtrainSEXP, SEXP xtestSEXP, SEXP SSEXP) {
+NumericMatrix observation_impute_cpp(IntegerVector index_xtrain, IntegerVector index_s, NumericMatrix x_train, NumericMatrix x_explain, IntegerMatrix S);
+RcppExport SEXP _shapr_observation_impute_cpp(SEXP index_xtrainSEXP, SEXP index_sSEXP, SEXP x_trainSEXP, SEXP x_explainSEXP, SEXP SSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerVector >::type index_xtrain(index_xtrainSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type index_s(index_sSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type xtrain(xtrainSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type xtest(xtestSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x_train(x_trainSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x_explain(x_explainSEXP);
     Rcpp::traits::input_parameter< IntegerMatrix >::type S(SSEXP);
-    rcpp_result_gen = Rcpp::wrap(observation_impute_cpp(index_xtrain, index_s, xtrain, xtest, S));
+    rcpp_result_gen = Rcpp::wrap(observation_impute_cpp(index_xtrain, index_s, x_train, x_explain, S));
     return rcpp_result_gen;
 END_RCPP
 }
 // weight_matrix_cpp
-arma::mat weight_matrix_cpp(List features, int m, int n, NumericVector w);
-RcppExport SEXP _shapr_weight_matrix_cpp(SEXP featuresSEXP, SEXP mSEXP, SEXP nSEXP, SEXP wSEXP) {
+arma::mat weight_matrix_cpp(List coalitions, int m, int n, NumericVector w);
+RcppExport SEXP _shapr_weight_matrix_cpp(SEXP coalitionsSEXP, SEXP mSEXP, SEXP nSEXP, SEXP wSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type features(featuresSEXP);
+    Rcpp::traits::input_parameter< List >::type coalitions(coalitionsSEXP);
     Rcpp::traits::input_parameter< int >::type m(mSEXP);
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type w(wSEXP);
-    rcpp_result_gen = Rcpp::wrap(weight_matrix_cpp(features, m, n, w));
+    rcpp_result_gen = Rcpp::wrap(weight_matrix_cpp(coalitions, m, n, w));
     return rcpp_result_gen;
 END_RCPP
 }
-// feature_matrix_cpp
-NumericMatrix feature_matrix_cpp(List features, int m);
-RcppExport SEXP _shapr_feature_matrix_cpp(SEXP featuresSEXP, SEXP mSEXP) {
+// coalition_matrix_cpp
+NumericMatrix coalition_matrix_cpp(List coalitions, int m);
+RcppExport SEXP _shapr_coalition_matrix_cpp(SEXP coalitionsSEXP, SEXP mSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type features(featuresSEXP);
+    Rcpp::traits::input_parameter< List >::type coalitions(coalitionsSEXP);
     Rcpp::traits::input_parameter< int >::type m(mSEXP);
-    rcpp_result_gen = Rcpp::wrap(feature_matrix_cpp(features, m));
+    rcpp_result_gen = Rcpp::wrap(coalition_matrix_cpp(coalitions, m));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -155,11 +244,17 @@ static const R_CallMethodDef CallEntries[] = {
     {"_shapr_correction_matrix_cpp", (DL_FUNC) &_shapr_correction_matrix_cpp, 2},
     {"_shapr_aicc_full_single_cpp", (DL_FUNC) &_shapr_aicc_full_single_cpp, 5},
     {"_shapr_aicc_full_cpp", (DL_FUNC) &_shapr_aicc_full_cpp, 6},
+    {"_shapr_quantile_type7_cpp", (DL_FUNC) &_shapr_quantile_type7_cpp, 2},
+    {"_shapr_inv_gaussian_transform_cpp", (DL_FUNC) &_shapr_inv_gaussian_transform_cpp, 2},
+    {"_shapr_prepare_data_copula_cpp", (DL_FUNC) &_shapr_prepare_data_copula_cpp, 7},
+    {"_shapr_prepare_data_copula_cpp_caus", (DL_FUNC) &_shapr_prepare_data_copula_cpp_caus, 7},
+    {"_shapr_prepare_data_gaussian_cpp", (DL_FUNC) &_shapr_prepare_data_gaussian_cpp, 5},
+    {"_shapr_prepare_data_gaussian_cpp_caus", (DL_FUNC) &_shapr_prepare_data_gaussian_cpp_caus, 5},
     {"_shapr_mahalanobis_distance_cpp", (DL_FUNC) &_shapr_mahalanobis_distance_cpp, 5},
-    {"_shapr_sample_features_cpp", (DL_FUNC) &_shapr_sample_features_cpp, 2},
+    {"_shapr_sample_coalitions_cpp_str_paired", (DL_FUNC) &_shapr_sample_coalitions_cpp_str_paired, 3},
     {"_shapr_observation_impute_cpp", (DL_FUNC) &_shapr_observation_impute_cpp, 5},
     {"_shapr_weight_matrix_cpp", (DL_FUNC) &_shapr_weight_matrix_cpp, 4},
-    {"_shapr_feature_matrix_cpp", (DL_FUNC) &_shapr_feature_matrix_cpp, 2},
+    {"_shapr_coalition_matrix_cpp", (DL_FUNC) &_shapr_coalition_matrix_cpp, 2},
     {NULL, NULL, 0}
 };
 
