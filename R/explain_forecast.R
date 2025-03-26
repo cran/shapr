@@ -67,7 +67,7 @@
 #'
 #' @author Jon Lachmann, Martin Jullum
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Load example data
 #' data("airquality")
 #' data <- data.table::as.data.table(airquality)
@@ -108,7 +108,7 @@ explain_forecast <- function(model,
                              group_lags = TRUE,
                              group = NULL,
                              n_MC_samples = 1e3,
-                             seed = 1,
+                             seed = NULL,
                              predict_model = NULL,
                              get_model_specs = NULL,
                              verbose = "basic",

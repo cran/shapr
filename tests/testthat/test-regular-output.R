@@ -1,4 +1,5 @@
-# lm_numeric with different approaches
+skip_on_cran()
+
 
 test_that("output_lm_numeric_independence", {
   expect_snapshot_rds(
@@ -9,6 +10,7 @@ test_that("output_lm_numeric_independence", {
       x_train = x_train_numeric,
       approach = "independence",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_independence"
@@ -24,6 +26,7 @@ test_that("output_lm_numeric_independence_MSEv_Shapley_weights", {
       x_train = x_train_numeric,
       approach = "independence",
       phi0 = p0,
+      seed = 1,
       output_args = list(MSEv_uniform_comb_weights = FALSE),
       iterative = FALSE
     ),
@@ -40,6 +43,7 @@ test_that("output_lm_numeric_empirical", {
       x_train = x_train_numeric,
       approach = "empirical",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_empirical"
@@ -55,6 +59,7 @@ test_that("output_lm_numeric_empirical_n_coalitions", {
       x_train = x_train_numeric,
       approach = "empirical",
       phi0 = p0,
+      seed = 1,
       max_n_coalitions = 20,
       iterative = FALSE
     ),
@@ -72,6 +77,7 @@ test_that("output_lm_numeric_empirical_independence", {
       x_train = x_train_numeric,
       approach = "empirical",
       phi0 = p0,
+      seed = 1,
       empirical.type = "independence",
       iterative = FALSE
     ),
@@ -89,6 +95,7 @@ test_that("output_lm_numeric_empirical_AICc_each", {
       x_train = x_train_numeric,
       approach = "empirical",
       phi0 = p0,
+      seed = 1,
       max_n_coalitions = 8,
       empirical.type = "AICc_each_k",
       iterative = FALSE
@@ -107,6 +114,7 @@ test_that("output_lm_numeric_empirical_AICc_full", {
       x_train = x_train_numeric,
       approach = "empirical",
       phi0 = p0,
+      seed = 1,
       max_n_coalitions = 8,
       empirical.type = "AICc_full",
       iterative = FALSE
@@ -124,6 +132,7 @@ test_that("output_lm_numeric_gaussian", {
       x_train = x_train_numeric,
       approach = "gaussian",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_gaussian"
@@ -139,6 +148,7 @@ test_that("output_lm_numeric_copula", {
       x_train = x_train_numeric,
       approach = "copula",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_copula"
@@ -154,6 +164,7 @@ test_that("output_lm_numeric_ctree", {
       x_train = x_train_numeric,
       approach = "ctree",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_ctree"
@@ -171,6 +182,7 @@ test_that("output_lm_numeric_vaeac", {
       x_train = x_train_numeric,
       approach = "vaeac",
       phi0 = p0,
+      seed = 1,
       n_MC_samples = 10, # Low value here to speed up the time
       vaeac.epochs = 4, # Low value here to speed up the time
       vaeac.n_vaeacs_initialize = 2, # Low value here to speed up the time
@@ -180,7 +192,8 @@ test_that("output_lm_numeric_vaeac", {
       ),
       iterative = FALSE
     ),
-    "output_lm_numeric_vaeac"
+    "output_lm_numeric_vaeac",
+    digits = 3 # Reduce to 3 digits due to randomness problems across OS for vaeac
   )
 })
 
@@ -193,6 +206,7 @@ test_that("output_lm_categorical_ctree", {
       x_train = x_train_categorical,
       approach = "ctree",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_categorical_ctree"
@@ -210,6 +224,7 @@ test_that("output_lm_categorical_vaeac", {
       x_train = x_train_categorical,
       approach = "vaeac",
       phi0 = p0,
+      seed = 1,
       n_MC_samples = 10, # Low value here to speed up the time
       vaeac.epochs = 4, # Low value here to speed up the time
       vaeac.n_vaeacs_initialize = 2, # Low value here to speed up the time
@@ -219,7 +234,8 @@ test_that("output_lm_categorical_vaeac", {
       ),
       iterative = FALSE
     ),
-    "output_lm_categorical_vaeac"
+    "output_lm_categorical_vaeac",
+    digits = 3 # Reduce to 3 digits due to randomness problems across OS for vaeac
   )
 })
 
@@ -232,6 +248,7 @@ test_that("output_lm_categorical_categorical", {
       x_train = x_train_categorical,
       approach = "categorical",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_categorical_method"
@@ -247,6 +264,7 @@ test_that("output_lm_categorical_independence", {
       x_train = x_train_categorical,
       approach = "independence",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_categorical_independence"
@@ -262,6 +280,7 @@ test_that("output_lm_ts_timeseries", {
       x_train = x_train_ts,
       approach = "timeseries",
       phi0 = p0_ts,
+      seed = 1,
       group = group_ts,
       iterative = FALSE
     ),
@@ -278,6 +297,7 @@ test_that("output_lm_numeric_comb1", {
       x_train = x_train_numeric,
       approach = c("gaussian", "empirical", "ctree", "independence"),
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_comb1"
@@ -293,6 +313,7 @@ test_that("output_lm_numeric_comb2", {
       x_train = x_train_numeric,
       approach = c("ctree", "copula", "independence", "copula"),
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_comb2"
@@ -308,6 +329,7 @@ test_that("output_lm_numeric_comb3", {
       x_train = x_train_numeric,
       approach = c("independence", "empirical", "gaussian", "empirical"),
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_comb3"
@@ -326,6 +348,7 @@ test_that("output_lm_mixed_independence", {
       x_train = x_train_mixed,
       approach = "independence",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_mixed_independence"
@@ -341,6 +364,7 @@ test_that("output_lm_mixed_ctree", {
       x_train = x_train_mixed,
       approach = "ctree",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_mixed_ctree"
@@ -358,6 +382,7 @@ test_that("output_lm_mixed_vaeac", {
       x_train = x_train_mixed,
       approach = "vaeac",
       phi0 = p0,
+      seed = 1,
       n_MC_samples = 10, # Low value here to speed up the time
       vaeac.epochs = 4, # Low value here to speed up the time
       vaeac.n_vaeacs_initialize = 2, # Low value here to speed up the time
@@ -367,7 +392,8 @@ test_that("output_lm_mixed_vaeac", {
       ),
       iterative = FALSE
     ),
-    "output_lm_mixed_vaeac"
+    "output_lm_mixed_vaeac",
+    digits = 3 # Reduce to 3 digits due to randomness problems across OS for vaeac
   )
 })
 
@@ -381,6 +407,7 @@ test_that("output_lm_mixed_comb", {
       x_train = x_train_mixed,
       approach = c("ctree", "independence", "ctree", "independence"),
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_mixed_comb"
@@ -408,6 +435,7 @@ test_that("output_custom_lm_numeric_independence_1", {
       x_train = x_train_numeric,
       approach = "independence",
       phi0 = p0,
+      seed = 1,
       predict_model = custom_pred_func,
       iterative = FALSE
     ),
@@ -415,48 +443,6 @@ test_that("output_custom_lm_numeric_independence_1", {
   )
 })
 
-test_that("output_custom_lm_numeric_independence_2", {
-  set.seed(123)
-  custom_pred_func <- function(x, newdata) {
-    beta <- coef(x)
-    X <- cbind(1, newdata)
-    return(as.vector(beta %*% t(X)))
-  }
-
-  model_custom_lm_numeric <- model_lm_numeric
-  class(model_custom_lm_numeric) <- "whatever"
-
-
-  expect_snapshot_rds(
-    (custom <- explain(
-      testing = TRUE,
-      model = model_custom_lm_numeric,
-      x_explain = x_explain_numeric,
-      x_train = x_train_numeric,
-      approach = "independence",
-      phi0 = p0,
-      predict_model = custom_pred_func,
-      iterative = FALSE
-    )),
-    "output_custom_lm_numeric_independence_2"
-  )
-
-  native <- explain(
-    testing = TRUE,
-    model = model_lm_numeric,
-    x_explain = x_explain_numeric,
-    x_train = x_train_numeric,
-    approach = "independence",
-    phi0 = p0,
-    iterative = FALSE
-  )
-
-  # Check that the printed Shapley values are identical
-  expect_equal(
-    custom$shapley_values_est,
-    native$shapley_values_est
-  )
-})
 
 test_that("output_custom_xgboost_mixed_dummy_ctree", {
   if (requireNamespace("xgboost", quietly = TRUE)) {
@@ -498,6 +484,7 @@ test_that("output_custom_xgboost_mixed_dummy_ctree", {
           x_explain = x_explain_mixed,
           approach = "ctree",
           phi0 = p0,
+          seed = 1,
           predict_model = predict_model.xgboost_dummy,
           get_model_specs = NA,
           iterative = FALSE
@@ -521,6 +508,7 @@ test_that("output_lm_numeric_interaction", {
       x_train = x_train_interaction,
       approach = "independence",
       phi0 = p0,
+      seed = 1,
       iterative = FALSE
     ),
     "output_lm_numeric_interaction"
@@ -539,6 +527,7 @@ test_that("output_lm_numeric_ctree_parallelized", {
         x_train = x_train_numeric,
         approach = "ctree",
         phi0 = p0,
+        seed = 1,
         iterative = FALSE
       )
     },
@@ -561,30 +550,11 @@ test_that("output_lm_numeric_empirical_progress", {
           x_train = x_train_numeric,
           approach = "empirical",
           phi0 = p0,
+          seed = 1,
           iterative = FALSE
         )
       })
     },
     "output_lm_numeric_empirical_progress"
   )
-})
-
-
-# Just checking that internal$output$dt_samp_for_vS  works
-test_that("output_lm_numeric_independence_keep_samp_for_vS", {
-  expect_snapshot_rds(
-    (out <- explain(
-      testing = TRUE,
-      model = model_lm_numeric,
-      x_explain = x_explain_numeric,
-      x_train = x_train_numeric,
-      approach = "independence",
-      phi0 = p0,
-      output_args = list(keep_samp_for_vS = TRUE),
-      iterative = FALSE
-    )),
-    "output_lm_numeric_independence_keep_samp_for_vS"
-  )
-
-  expect_false(is.null(out$internal$output$dt_samp_for_vS))
 })

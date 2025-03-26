@@ -14,7 +14,7 @@ explain(
   max_n_coalitions = NULL,
   group = NULL,
   n_MC_samples = 1000,
-  seed = 1,
+  seed = NULL,
   verbose = "basic",
   predict_model = NULL,
   get_model_specs = NULL,
@@ -95,7 +95,7 @@ Aas et al. (2021), i.e. the maximum number of observations (with largest weights
 
 \item{seed}{Positive integer.
 Specifies the seed before any randomness based code is being run.
-If \code{NULL} no seed is set in the calling environment.}
+If \code{NULL} (default) no seed is set in the calling environment.}
 
 \item{verbose}{String vector or NULL.
 Specifies the verbosity (printout detail level) through one or more of strings \code{"basic"}, \code{"progress"},
@@ -403,7 +403,7 @@ This combined batch computing of the v(S) values, enables fast and accurate esti
 in a memory friendly manner.
 }
 \examples{
-\dontrun{
+\donttest{
 
 # Load example data
 data("airquality")
@@ -466,15 +466,17 @@ explain3 <- explain(
   n_MC_samples = 1e2
 )
 
-# ctree approach
-explain4 <- explain(
-  model = model,
-  x_explain = x_explain,
-  x_train = x_train,
-  approach = "ctree",
-  phi0 = p,
-  n_MC_samples = 1e2
-)
+if (requireNamespace("party", quietly = TRUE)) {
+  # ctree approach
+  explain4 <- explain(
+    model = model,
+    x_explain = x_explain,
+    x_train = x_train,
+    approach = "ctree",
+    phi0 = p,
+    n_MC_samples = 1e2
+  )
+}
 
 # Combined approach
 approach <- c("gaussian", "gaussian", "empirical")
@@ -543,6 +545,12 @@ explain_iterative <- explain(
   iterative = TRUE,
   iterative_args = list(initial_n_coalitions = 10)
 )
+}
+\dontshow{
+if (requireNamespace("future", quietly = TRUE)) {
+  # R CMD check: make sure any open connections are closed afterward
+  if (!inherits(future::plan(), "sequential")) future::plan("sequential")
+}
 }
 
 }
