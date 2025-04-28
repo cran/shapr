@@ -115,7 +115,7 @@ prepare_data.ctree <- function(internal, index_features = NULL, ...) {
 #' @param given_ind Integer vector.
 #' Indicates which features are conditioned on.
 #'
-#' @param use_partykit String. In some semi-rare cases [partykit::ctree()] runs into an error related to the LINPACK
+#' @param use_partykit String. In some semi-rare cases [party::ctree()] runs into an error related to the LINPACK
 #' used by R. To get around this problem, one may fall back to using the newer (but slower) [partykit::ctree()]
 #' function, which is a reimplementation of the same method. Setting this parameter to `"on_error"` (default)
 #' falls back to  [partykit::ctree()], if [party::ctree()] fails. Other options are `"never"`, which always
@@ -160,7 +160,9 @@ create_ctree <- function(given_ind,
           )
         )
       }, error = function(ex) {
-        warning("party::ctree ran into the error: ", ex, "Using partykit::ctree instead!")
+        msg1 <- paste0("{.fn party::ctree} ran into the error: ", ex)
+        msg2 <- "Using {.fn partykit::ctree} instead!"
+        cli::cli_warn(c("!" = msg1, " " = msg2), immediate. = TRUE)
         partykit::ctree(fmla,
           data = df,
           control = partykit::ctree_control(
@@ -179,7 +181,8 @@ create_ctree <- function(given_ind,
         )
       )
     } else if (use_partykit == "always") {
-      warning("Using partykit::ctree instead of party::ctree!")
+      msg <- "Using {.fn partykit::ctree} instead of {.fn party::ctree}!"
+      cli::cli_warn(c("!" = msg), immediate. = TRUE)
       datact <- partykit::ctree(fmla,
         data = df,
         control = partykit::ctree_control(
@@ -189,7 +192,12 @@ create_ctree <- function(given_ind,
         )
       )
     } else {
-      stop("use_partykit needs to be one of 'on_error', 'never', or 'always'. See ?create_ctree for details.")
+      cli::cli_abort(
+        paste0(
+          "`use_partykit` needs to be one of 'on_error', 'never', or 'always'. ",
+          "See {.fn shapr::create_ctree} for details."
+        )
+      )
     }
   }
   return(list(tree = datact, given_ind = given_ind, dependent_ind = dependent_ind))

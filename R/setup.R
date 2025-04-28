@@ -63,6 +63,24 @@ setup <- function(x_train,
                   ...) {
   internal <- list()
 
+  # Check verbose already here to use it below
+  check_verbose(verbose)
+
+  # Check testing already here to use it below
+  if (!is.logical(testing) && length(testing) == 1) {
+    cli::cli_abort("`testing` must be a single logical.")
+  }
+
+  # Create a nice header
+  cli_topline(
+    verbose = verbose,
+    testing = testing,
+    init_time = init_time,
+    type = type,
+    is_python = is_python
+  )
+
+
   # Using parameters and iter_list from a previouys  to continue estimation from on previous shapr objects
   if (is.null(prev_shapr_object)) {
     prev_iter_list <- NULL
@@ -140,7 +158,7 @@ get_prev_internal <- function(prev_shapr_object,
   } else if (cl == "shapr") {
     internal <- prev_shapr_object$internal[c("parameters", "iter_list")]
   } else {
-    stop("Invalid `shapr_object` passed to explain(). See ?explain for details.")
+    cli::cli_abort("Invalid `shapr_object` passed to {.fn shapr::explain}. Please see the documentation.")
   }
 
   if (length(exclude_parameters) > 0) {
@@ -180,20 +198,19 @@ get_parameters <- function(approach,
                            extra_computation_args = list(),
                            testing = FALSE,
                            ...) {
-  # Check input type for approach
+  # approach is checked comprehensively later
 
-  # approach is checked more comprehensively later
   if (!is.logical(iterative) && length(iterative) == 1) {
-    stop("`iterative` must be a single logical.")
+    cli::cli_abort("`iterative` must be a single logical.")
   }
   if (!is.list(iterative_args)) {
-    stop("`iterative_args` must be a list.")
+    cli::cli_abort("`iterative_args` must be a list.")
   }
   if (!is.list(output_args)) {
-    stop("`output_args` must be a list.")
+    cli::cli_abort("`output_args` must be a list.")
   }
   if (!is.list(extra_computation_args)) {
-    stop("`extra_computation_args` must be a list.")
+    cli::cli_abort("`extra_computation_args` must be a list.")
   }
 
 
@@ -204,13 +221,13 @@ get_parameters <- function(approach,
       length(max_n_coalitions) == 1 &&
       !is.na(max_n_coalitions) &&
       max_n_coalitions > 0)) {
-    stop("`max_n_coalitions` must be NULL or a single positive integer.")
+    cli::cli_abort("`max_n_coalitions` must be NULL or a single positive integer.")
   }
 
   # group (checked more thoroughly later)
   if (!is.null(group) &&
     !is.list(group)) {
-    stop("`group` must be NULL or a list")
+    cli::cli_abort("`group` must be NULL or a list")
   }
 
   # n_MC_samples
@@ -218,69 +235,66 @@ get_parameters <- function(approach,
     length(n_MC_samples) == 1 &&
     !is.na(n_MC_samples) &&
     n_MC_samples > 0)) {
-    stop("`n_MC_samples` must be a single positive integer.")
+    cli::cli_abort("`n_MC_samples` must be a single positive integer.")
   }
+
+  # max_n_coalitions
+  if (!is.null(seed) &&
+    !(length(seed) == 1 &&
+      !is.na(seed))) {
+    cli::cli_abort("`seed` must be NULL or a single value, interpreted as an integer.")
+  }
+
 
   # type
   if (!(type %in% c("regular", "forecast"))) {
-    stop("`type` must be either `regular` or `forecast`.\n")
-  }
-
-  # verbose
-  check_verbose(verbose)
-  if (!is.null(verbose) &&
-    (!is.character(verbose) || !(all(verbose %in% c("basic", "progress", "convergence", "shapley", "vS_details"))))
-  ) {
-    stop(
-      paste0(
-        "`verbose` must be NULL or a string (vector) containing one or more of the strings ",
-        "`basic`, `progress`, `convergence`, `shapley`, `vS_details`.\n"
-      )
-    )
+    cli::cli_abort("`type` must be either `regular` or `forecast`.")
   }
 
   # parameters only used for type "forecast"
   if (type == "forecast") {
     if (!(is.wholenumber(horizon) && all(horizon > 0))) {
-      stop("`horizon` must be a vector (or scalar) of positive integers.\n")
+      cli::cli_abort("`horizon` must be a vector (or scalar) of positive integers.")
     }
 
     if (any(horizon != output_size)) {
-      stop(paste0("`horizon` must match the output size of the model (", paste0(output_size, collapse = ", "), ").\n"))
+      cli::cli_abort(
+        paste0("`horizon` must match the output size of the model (", paste0(output_size, collapse = ", "), ").")
+      )
     }
 
     if (!(length(train_idx) > 1 && is.wholenumber(train_idx) && all(train_idx > 0) && all(is.finite(train_idx)))) {
-      stop("`train_idx` must be a vector of positive finite integers and length > 1.\n")
+      cli::cli_abort("`train_idx` must be a vector of positive finite integers and length > 1.")
     }
 
     if (!(is.wholenumber(explain_idx) && all(explain_idx > 0) && all(is.finite(explain_idx)))) {
-      stop("`explain_idx` must be a vector of positive finite integers.\n")
+      cli::cli_abort("`explain_idx` must be a vector of positive finite integers.")
     }
 
     if (!(is.wholenumber(explain_y_lags) && all(explain_y_lags >= 0) && all(is.finite(explain_y_lags)))) {
-      stop("`explain_y_lags` must be a vector of positive finite integers.\n")
+      cli::cli_abort("`explain_y_lags` must be a vector of positive finite integers.")
     }
 
     if (!(is.wholenumber(explain_xreg_lags) && all(explain_xreg_lags >= 0) && all(is.finite(explain_xreg_lags)))) {
-      stop("`explain_xreg_lags` must be a vector of positive finite integers.\n")
+      cli::cli_abort("`explain_xreg_lags` must be a vector of positive finite integers.")
     }
 
     if (!(is.logical(group_lags) && length(group_lags) == 1)) {
-      stop("`group_lags` must be a single logical.\n")
+      cli::cli_abort("`group_lags` must be a single logical.")
     }
   }
 
   # Parameter used in asymmetric and causal Shapley values (more in-depth checks later)
-  if (!is.logical(asymmetric) || length(asymmetric) != 1) stop("`asymmetric` must be a single logical.\n")
-  if (!is.null(confounding) && !is.logical(confounding)) stop("`confounding` must be a logical (vector).\n")
-  if (!is.null(causal_ordering) && !is.list(causal_ordering)) stop("`causal_ordering` must be a list.\n")
+  if (!is.logical(asymmetric) || length(asymmetric) != 1) cli::cli_abort("`asymmetric` must be a single logical.")
+  if (!is.null(confounding) && !is.logical(confounding)) cli::cli_abort("`confounding` must be a logical (vector).")
+  if (!is.null(causal_ordering) && !is.list(causal_ordering)) cli::cli_abort("`causal_ordering` must be a list.")
 
   #### Tests combining more than one parameter ####
   # phi0 vs output_size
   if (!all((is.numeric(phi0)) &&
     all(length(phi0) == output_size) &&
     all(!is.na(phi0)))) {
-    stop(paste0(
+    cli::cli_abort(paste0(
       "`phi0` (", paste0(phi0, collapse = ", "),
       ") must be numeric and match the output size of the model (",
       paste0(output_size, collapse = ", "), ")."
@@ -349,10 +363,10 @@ check_verbose <- function(verbose) {
   if (!is.null(verbose) &&
     (!is.character(verbose) || !(all(verbose %in% c("basic", "progress", "convergence", "shapley", "vS_details"))))
   ) {
-    stop(
+    cli::cli_abort(
       paste0(
         "`verbose` must be NULL or a string (vector) containing one or more of the strings ",
-        "`basic`, `progress`, `convergence`, `shapley`, `vS_details`.\n"
+        "`basic`, `progress`, `convergence`, `shapley`, `vS_details`."
       )
     )
   }
@@ -361,26 +375,28 @@ check_verbose <- function(verbose) {
 #' @keywords internal
 get_data <- function(x_train, x_explain) {
   # Check data object type
-  stop_message <- ""
+  stop_message <- NULL
   if (!is.matrix(x_train) && !is.data.frame(x_train)) {
-    stop_message <- paste0(stop_message, "x_train should be a matrix or a data.frame/data.table.\n")
+    stop_message <- c(stop_message, "x_train should be a matrix or a data.frame/data.table.")
   }
   if (!is.matrix(x_explain) && !is.data.frame(x_explain)) {
-    stop_message <- paste0(stop_message, "x_explain should be a matrix or a data.frame/data.table.\n")
+    stop_message <- c(stop_message, "x_explain should be a matrix or a data.frame/data.table.")
   }
-  if (stop_message != "") {
-    stop(stop_message)
+  if (!is.null(stop_message)) {
+    names(stop_message) <- rep("!", length(stop_message))
+    cli::cli_abort(stop_message)
   }
 
   # Check column names
   if (all(is.null(colnames(x_train)))) {
-    stop_message <- paste0(stop_message, "x_train misses column names.\n")
+    stop_message <- c(stop_message, "x_train misses column names.\n")
   }
   if (all(is.null(colnames(x_explain)))) {
-    stop_message <- paste0(stop_message, "x_explain misses column names.\n")
+    stop_message <- c(stop_message, "x_explain misses column names.\n")
   }
-  if (stop_message != "") {
-    stop(stop_message)
+  if (!is.null(stop_message)) {
+    names(stop_message) <- rep("!", length(stop_message))
+    cli::cli_abort(stop_message)
   }
 
 
@@ -394,6 +410,8 @@ get_data <- function(x_train, x_explain) {
 #' @keywords internal
 check_data <- function(internal) {
   # Check model and data compatability
+  verbose <- internal$parameters$verbose
+
   x_train <- internal$data$x_train
   x_explain <- internal$data$x_explain
 
@@ -409,33 +427,40 @@ check_data <- function(internal) {
   NA_factor_levels <- any(is.na(model_feature_specs$factor_levels))
 
   if (is.null(model_feature_specs)) {
-    message(
-      "Note: You passed a model to explain() which is not natively supported, and did not supply a ",
-      "'get_model_specs' function to explain().\n",
-      "Consistency checks between model and data is therefore disabled.\n"
-    )
+    if ("basic" %in% verbose) {
+      msg1 <- paste0(
+        "You passed a model to {.fn shapr::explain} which is not natively supported, and did not supply a ",
+        "`get_model_specs` function to {.fn shapr::explain}."
+      )
+      msg2 <- "Consistency checks between model and data is therefore disabled."
+      cli::cli_inform(c("i" = msg1, " " = msg2))
+    }
 
     model_feature_specs <- x_train_feature_specs
   } else if (NA_labels) {
-    message(
-      "Note: Feature names extracted from the model contains NA.\n",
-      "Consistency checks between model and data is therefore disabled.\n"
-    )
+    if ("basic" %in% verbose) {
+      msg1 <- "Feature names extracted from the model contains `NA`."
+      msg2 <- "Consistency checks between model and data is therefore disabled."
+
+      cli::cli_inform(c("i" = msg1, " " = msg2))
+    }
 
     model_feature_specs <- x_train_feature_specs
   } else if (NA_classes) {
-    message(
-      "Note: Feature classes extracted from the model contains NA.\n",
-      "Assuming feature classes from the data are correct.\n"
-    )
+    if ("basic" %in% verbose) {
+      msg1 <- "Feature classes extracted from the model contains `NA`."
+      msg2 <- "Assuming feature classes from the data are correct."
+      cli::cli_inform(c("i" = msg1, " " = msg2))
+    }
 
     model_feature_specs$classes <- x_train_feature_specs$classes
     model_feature_specs$factor_levels <- x_train_feature_specs$factor_levels
   } else if (factors_exists && NA_factor_levels) {
-    message(
-      "Note: Feature factor levels extracted from the model contains NA.\n",
-      "Assuming feature factor levels from the data are correct.\n"
-    )
+    if ("basic" %in% verbose) {
+      msg1 <- "Feature factor levels extracted from the model contains `NA`."
+      msg2 <- "Assuming feature factor levels from the data are correct."
+      cli::cli_inform(c("i" = msg1, " " = msg2))
+    }
 
     model_feature_specs$factor_levels <- x_train_feature_specs$factor_levels
   }
@@ -472,6 +497,8 @@ compare_feature_specs <- function(spec1, spec2, name1 = "model", name2 = "x_trai
 #' This includes both extra parameters and other objects
 #' @keywords internal
 get_extra_parameters <- function(internal, type) {
+  verbose <- internal$parameters$verbose
+
   if (type == "forecast") {
     internal$parameters$horizon_features <- lapply(
       internal$data$horizon_group,
@@ -508,10 +535,10 @@ get_extra_parameters <- function(internal, type) {
 
     # Make group names if not existing
     if (is.null(names(group))) {
-      message(
-        "\nSuccess with message:\n
-      Group names not provided. Assigning them the default names 'group1', 'group2', 'group3' etc."
-      )
+      if ("basic" %in% verbose) {
+        msg <- "Group names not provided. Assigning them the default names 'group1', 'group2', 'group3' etc."
+        cli::cli_inform(c("i" = msg))
+      }
       names(group) <- paste0("group", seq_along(group))
     }
 
@@ -581,6 +608,7 @@ check_and_set_parameters <- function(internal, type) {
   confounding <- internal$parameters$confounding
   asymmetric <- internal$parameters$asymmetric
   regression <- internal$parameters$regression
+  m <- internal$parameters$n_shapley_values
 
   if (type == "forecast") {
     horizon <- internal$parameters$horizon
@@ -604,6 +632,15 @@ check_and_set_parameters <- function(internal, type) {
   # Check the causal sampling
   internal <- check_and_set_causal_sampling(internal)
   if (asymmetric) internal <- check_and_set_asymmetric(internal)
+
+  # Get the number of valid coalitions of each size
+  if (asymmetric) {
+    internal$parameters$n_coal_each_size <-
+      internal$objects$dt_valid_causal_coalitions[, .N, by = .(coalition_size)][-c(1, .N), N]
+  } else {
+    # Do not set it for forecast, as it is generated on the fly as the value of changes with the horizon
+    if (type != "forecast") internal$parameters$n_coal_each_size <- as.integer(choose(m, seq(m - 1)))
+  }
 
   # Adjust max_n_coalitions
   internal$parameters$max_n_coalitions <- adjust_max_n_coalitions(internal)
@@ -652,9 +689,9 @@ check_and_set_causal_ordering <- function(internal) {
     causal_ordering <- convert_feature_name_to_idx(causal_ordering, labels_now, feat_group_txt)
   }
   if (!is.numeric(unlist(causal_ordering))) {
-    stop(paste0(
+    cli::cli_abort(paste0(
       "`causal_ordering` must be a list containg either only integers representing the ", feat_group_txt,
-      " indices or the ", feat_group_txt, " names as strings. See the documentation for more details.\n"
+      " indices or the ", feat_group_txt, " names as strings. See the documentation for more details."
     ))
   }
 
@@ -664,9 +701,9 @@ check_and_set_causal_ordering <- function(internal) {
   # Check that the we have n_features elements and that they are 1 through n_features (i.e., no duplicates).
   causal_ordering_vec_sort <- sort(unlist(causal_ordering))
   if (length(causal_ordering_vec_sort) != n_shapley_values || any(causal_ordering_vec_sort != seq(n_shapley_values))) {
-    stop(paste0(
+    cli::cli_abort(paste0(
       "`causal_ordering` is incomplete/incorrect. It must contain all ",
-      feat_group_txt, " names or indices exactly once.\n"
+      feat_group_txt, " names or indices exactly once."
     ))
   }
 
@@ -698,9 +735,9 @@ check_and_set_confounding <- function(internal) {
 
   # Check that confounding is either specified globally or locally
   if (length(confounding) > 1 && length(confounding) != length(causal_ordering)) {
-    stop(paste0(
+    cli::cli_abort(paste0(
       "`confounding` must either be a single logical or a vector of logicals of the same length as ",
-      "the number of components in `causal_ordering` (", length(causal_ordering), ").\n"
+      "the number of components in `causal_ordering` (", length(causal_ordering), ")."
     ))
   }
 
@@ -737,8 +774,12 @@ check_and_set_causal_sampling <- function(internal) {
 
   # For the causal/step-wise sampling procedure, we do not support multiple approaches and regression is inapplicable
   if (internal$parameters$causal_sampling) {
-    if (internal$parameters$regression) stop("Causal Shapley values is not applicable for regression approaches.\n")
-    if (internal$parameters$n_approaches > 1) stop("Causal Shapley values is not applicable for combined approaches.\n")
+    if (internal$parameters$regression) {
+      cli::cli_abort("Causal Shapley values is not applicable for regression approaches.")
+    }
+    if (internal$parameters$n_approaches > 1) {
+      cli::cli_abort("Causal Shapley values is not applicable for combined approaches.")
+    }
   }
 
   return(internal)
@@ -749,26 +790,30 @@ check_and_set_causal_sampling <- function(internal) {
 #' @author Lars Henry Berge Olsen
 check_and_set_asymmetric <- function(internal) {
   asymmetric <- internal$parameters$asymmetric
-  # exact <- internal$parameters$exact
   causal_ordering <- internal$parameters$causal_ordering
   max_n_coalitions <- internal$parameters$max_n_coalitions
 
-  # Get the number of coalitions that respects the (partial) causal ordering
-  internal$parameters$max_n_coalitions_causal <- get_max_n_coalitions_causal(causal_ordering = causal_ordering)
+  if (asymmetric) {
+    # Get the number of coalitions that respects the (partial) causal ordering
+    internal$parameters$max_n_coalitions_causal <- get_max_n_coalitions_causal(causal_ordering = causal_ordering)
 
-  # Get the coalitions that respects the (partial) causal ordering
-  internal$objects$dt_valid_causal_coalitions <- exact_coalition_table(
-    m = internal$parameters$n_shapley_values,
-    dt_valid_causal_coalitions = data.table(coalitions = get_valid_causal_coalitions(causal_ordering = causal_ordering))
-  )
+    # Get the coalitions that respects the (partial) causal ordering
+    internal$objects$dt_valid_causal_coalitions <- exact_coalition_table(
+      m = internal$parameters$n_shapley_values,
+      dt_valid_causal_coalitions =
+        data.table(coalitions = get_valid_causal_coalitions(causal_ordering = causal_ordering))
+    )
 
-  # Normalize the weights. Note that weight of a coalition size is even spread out among the valid coalitions
-  # of each size. I.e., if there is only one valid coalition of size |S|, then it gets the weight of the
-  # choose(M, |S|) coalitions of said size.
-  internal$objects$dt_valid_causal_coalitions[-c(1, .N), shapley_weight_norm := shapley_weight / sum(shapley_weight)]
+    # Normalize the weights. Note that weight of a coalition size is even spread out among the valid coalitions
+    # of each size. I.e., if there is only one valid coalition of size |S|, then it gets the weight of the
+    # choose(M, |S|) coalitions of said size.
+    internal$objects$dt_valid_causal_coalitions[-c(1, .N), shapley_weight_norm := shapley_weight / sum(shapley_weight)]
 
-  # Convert the coalitions to strings. Needed when sampling the coalitions in `sample_coalition_table()`.
-  internal$objects$dt_valid_causal_coalitions[, coalitions_str := sapply(coalitions, paste, collapse = " ")]
+    # Convert the coalitions to strings. Needed when sampling the coalitions in `sample_coalition_table()`.
+    internal$objects$dt_valid_causal_coalitions[, coalitions_str := sapply(coalitions, paste, collapse = " ")]
+  } else {
+
+  }
 
   return(internal)
 }
@@ -776,6 +821,8 @@ check_and_set_asymmetric <- function(internal) {
 
 #' @keywords internal
 adjust_max_n_coalitions <- function(internal) {
+  verbose <- internal$parameters$verbose
+
   is_groupwise <- internal$parameters$is_groupwise
   max_n_coalitions <- internal$parameters$max_n_coalitions
   n_features <- internal$parameters$n_features
@@ -792,13 +839,13 @@ adjust_max_n_coalitions <- function(internal) {
     # Set max_n_coalitions to upper bound
     if (is.null(max_n_coalitions) || max_n_coalitions > max_n_coalitions_causal) {
       max_n_coalitions <- max_n_coalitions_causal
-      message(
-        paste0(
-          "Success with message:\n",
-          "max_n_coalitions is NULL or larger than or number of coalitions respecting the causal\n",
-          "ordering ", max_n_coalitions_causal, ", and is therefore set to ", max_n_coalitions_causal, ".\n"
+      if ("basic" %in% verbose) {
+        msg <- paste0(
+          "`max_n_coalitions` is `NULL` or larger than or number of coalitions respecting the causal ",
+          "ordering ", max_n_coalitions_causal, ", and is therefore set to ", max_n_coalitions_causal, "."
         )
-      )
+        cli::cli_inform(c("i" = msg))
+      }
     }
 
     # Set max_n_coalitions to lower bound
@@ -806,25 +853,25 @@ adjust_max_n_coalitions <- function(internal) {
       max_n_coalitions < min(10, n_shapley_values + 1, max_n_coalitions_causal)) {
       if (max_n_coalitions_causal <= 10) {
         max_n_coalitions <- max_n_coalitions_causal
-        message(
-          paste0(
-            "Success with message:\n",
-            "max_n_coalitions_causal is smaller than or equal to 10, meaning there are\n",
-            "so few unique causal coalitions that we should use all to get reliable results.\n",
-            "max_n_coalitions is therefore set to ", max_n_coalitions_causal, ".\n"
+        if ("basic" %in% verbose) {
+          msg1 <- paste0(
+            "`max_n_coalitions_causal` is smaller than or equal to 10, meaning there are ",
+            "so few unique causal coalitions that we should use all to get reliable results."
           )
-        )
+          msg2 <- paste0("`max_n_coalitions` is therefore set to ", max_n_coalitions_causal, ".")
+          cli::cli_inform(c("i" = msg1, " " = msg2))
+        }
       } else {
         max_n_coalitions <- min(10, n_shapley_values + 1, max_n_coalitions_causal)
-        message(
-          paste0(
-            "Success with message:\n",
-            "max_n_coalitions is smaller than max(10, n_shapley_values + 1 = ", n_shapley_values + 1,
-            " max_n_coalitions_causal = ", max_n_coalitions_causal, "),",
-            "which will result in unreliable results.\n",
-            "It is therefore set to ", min(10, n_shapley_values + 1, max_n_coalitions_causal), ".\n"
+        if ("basic" %in% verbose) {
+          msg1 <- paste0(
+            "`max_n_coalitions` is smaller than `max(10, n_shapley_values + 1 = ",
+            n_shapley_values + 1,
+            ", max_n_coalitions_causal = ", max_n_coalitions_causal, ")`, which will result in unreliable results."
           )
-        )
+          msg2 <- paste0("It is therefore set to ", min(10, n_shapley_values + 1, max_n_coalitions_causal), ".")
+          cli::cli_inform(c("i" = msg1, " " = msg2))
+        }
       }
     }
   } else {
@@ -834,72 +881,72 @@ adjust_max_n_coalitions <- function(internal) {
       # Set max_n_coalitions to upper bound
       if (is.null(max_n_coalitions) || max_n_coalitions > 2^n_features) {
         max_n_coalitions <- 2^n_features
-        message(
-          paste0(
-            "Success with message:\n",
-            "max_n_coalitions is NULL or larger than or 2^n_features = ", 2^n_features, ", \n",
-            "and is therefore set to 2^n_features = ", 2^n_features, ".\n"
+        if ("basic" %in% verbose) {
+          msg <- paste0(
+            "`max_n_coalitions` is `NULL` or larger than or `2^n_features = ", 2^n_features, "`, ",
+            "and is therefore set to `2^n_features = ", 2^n_features, "`."
           )
-        )
+          cli::cli_inform(c("i" = msg))
+        }
       }
       # Set max_n_coalitions to lower bound
       if (isFALSE(is.null(max_n_coalitions)) && max_n_coalitions < min(10, n_features + 1)) {
         if (n_features <= 3) {
           max_n_coalitions <- 2^n_features
-          message(
-            paste0(
-              "Success with message:\n",
-              "n_features is smaller than or equal to 3, meaning there are so few unique coalitions (",
-              2^n_features, ") that we should use all to get reliable results.\n",
-              "max_n_coalitions is therefore set to 2^n_features = ", 2^n_features, ".\n"
+          if ("basic" %in% verbose) {
+            msg1 <- paste0(
+              "`n_features` is smaller than or equal to 3, meaning there are so few unique coalitions (",
+              2^n_features, ") that we should use all to get reliable results."
             )
-          )
+            msg2 <- paste0("`max_n_coalitions` is therefore set to `2^n_features = ", 2^n_features, "`.")
+            cli::cli_inform(c("i" = msg1, " " = msg2))
+          }
         } else {
           max_n_coalitions <- min(10, n_features + 1)
-          message(
-            paste0(
-              "Success with message:\n",
-              "max_n_coalitions is smaller than max(10, n_features + 1 = ", n_features + 1, "),",
-              "which will result in unreliable results.\n",
-              "It is therefore set to ", max(10, n_features + 1), ".\n"
+          if ("basic" %in% verbose) {
+            msg1 <- paste0(
+              "`max_n_coalitions` is smaller than `max(10, n_features + 1 = ", n_features + 1, ")`, ",
+              "which will result in unreliable results."
             )
-          )
+            msg2 <- paste0("It is therefore set to ", max(10, n_features + 1), ".")
+            cli::cli_inform(c("i" = msg1, " " = msg2))
+          }
         }
       }
     } else { # group wise
       # Set max_n_coalitions to upper bound
       if (is.null(max_n_coalitions) || max_n_coalitions > 2^n_shapley_values) {
         max_n_coalitions <- 2^n_shapley_values
-        message(
-          paste0(
-            "Success with message:\n",
-            "max_n_coalitions is NULL or larger than or 2^n_groups = ", 2^n_shapley_values, ", \n",
-            "and is therefore set to 2^n_groups = ", 2^n_shapley_values, ".\n"
+        if ("basic" %in% verbose) {
+          msg <- paste0(
+            "`max_n_coalitions` is `NULL` or larger than or `2^n_groups = ", 2^n_shapley_values, "`, ",
+            "and is therefore set to `2^n_groups = ", 2^n_shapley_values, "`."
           )
-        )
+          cli::cli_inform(c("i" = msg))
+        }
       }
       # Set max_n_coalitions to lower bound
       if (isFALSE(is.null(max_n_coalitions)) && max_n_coalitions < min(10, n_shapley_values + 1)) {
         if (n_shapley_values <= 3) {
           max_n_coalitions <- 2^n_shapley_values
-          message(
-            paste0(
-              "Success with message:\n",
-              "n_groups is smaller than or equal to 3, meaning there are so few unique coalitions (",
-              2^n_shapley_values, ") that we should use all to get reliable results.\n",
-              "max_n_coalitions is therefore set to 2^n_groups = ", 2^n_shapley_values, ".\n"
+          if ("basic" %in% verbose) {
+            msg1 <- paste0(
+              "`n_groups` is smaller than or equal to 3, meaning there are so few unique coalitions (",
+              2^n_shapley_values, ") that we should use all to get reliable results."
             )
-          )
+            msg2 <- paste0("`max_n_coalitions` is therefore set to `2^n_groups = ", 2^n_shapley_values, "`.")
+            cli::cli_inform(c("i" = msg1, " " = msg2))
+          }
         } else {
           max_n_coalitions <- min(10, n_shapley_values + 1)
-          message(
-            paste0(
-              "Success with message:\n",
-              "max_n_coalitions is smaller than max(10, n_groups + 1 = ", n_shapley_values + 1, "),",
-              "which will result in unreliable results.\n",
-              "It is therefore set to ", max(10, n_shapley_values + 1), ".\n"
+          if ("basic" %in% verbose) {
+            msg1 <- paste0(
+              "`max_n_coalitions` is smaller than `max(10, n_groups + 1 = ", n_shapley_values + 1, ")`,",
+              " which will result in unreliable results."
             )
-          )
+            msg2 <- paste0("It is therefore set to ", max(10, n_shapley_values + 1), ".")
+            cli::cli_inform(c("i" = msg1, " " = msg2))
+          }
         }
       }
     }
@@ -925,16 +972,16 @@ check_max_n_coalitions_fc <- function(internal) {
 
     if (!is_groupwise) {
       if (max_n_coalitions <= n_shapley_values) {
-        stop(paste0(
+        cli::cli_abort(paste0(
           "`max_n_coalitions` (", max_n_coalitions, ") has to be greater than the number of ",
           "components to decompose the forecast onto:\n",
           "`horizon` (", horizon, ") + `explain_y_lags` (", explain_y_lags, ") ",
-          "+ sum(`explain_xreg_lags`) (", sum(explain_xreg_lags), ").\n"
+          "+ sum(`explain_xreg_lags`) (", sum(explain_xreg_lags), ")."
         ))
       }
     } else {
       if (max_n_coalitions <= n_shapley_values) {
-        stop(paste0(
+        cli::cli_abort(paste0(
           "`max_n_coalitions` (", max_n_coalitions, ") has to be greater than the number of ",
           "components to decompose the forecast onto:\n",
           "ncol(`xreg`) (", ncol(`xreg`), ") + 1"
@@ -994,23 +1041,23 @@ check_output_args <- function(output_args) {
   # keep_samp_for_vS
   if (!(is.logical(keep_samp_for_vS) &&
     length(keep_samp_for_vS) == 1)) {
-    stop("`output_args$keep_samp_for_vS` must be single logical.")
+    cli::cli_abort("`output_args$keep_samp_for_vS` must be single logical.")
   }
 
   # Parameter used in the MSEv evaluation criterion
   if (!(is.logical(MSEv_uniform_comb_weights) && length(MSEv_uniform_comb_weights) == 1)) {
-    stop("`output_args$MSEv_uniform_comb_weights` must be single logical.")
+    cli::cli_abort("`output_args$MSEv_uniform_comb_weights` must be single logical.")
   }
 
   # saving_path
   if (!(is.character(saving_path) &&
     length(saving_path) == 1)) {
-    stop("`output_args$saving_path` must be a single character.")
+    cli::cli_abort("`output_args$saving_path` must be a single character.")
   }
 
   # Also check that saving_path exists, and abort if not...
   if (!dir.exists(dirname(saving_path))) {
-    stop(
+    cli::cli_abort(
       paste0(
         "Directory ", dirname(saving_path), " in the output_args$saving_path does not exists.\n",
         "Please create the directory with `dir.create('", dirname(saving_path), "')` or use another directory."
@@ -1020,7 +1067,7 @@ check_output_args <- function(output_args) {
 }
 
 
-#' @author Martin Jullum
+#' @author Martin Jullum and Lars Henry Berge Olsen
 #' @keywords internal
 set_extra_comp_params <- function(internal) {
   extra_computation_args <- internal$parameters$extra_computation_args
@@ -1038,14 +1085,53 @@ set_extra_comp_params <- function(internal) {
 
   # Check that we are not doing paired sampling when computing asymmetric Shapley values
   if (internal$parameters$asymmetric && extra_computation_args$paired_shap_sampling) {
-    stop(paste0(
-      "Set `paired_shap_sampling = FALSE` to compute asymmetric Shapley values.\n",
+    cli::cli_abort(paste0(
+      "Set `paired_shap_sampling = FALSE` to compute asymmetric Shapley values. ",
       "Asymmetric Shapley values do not support paired sampling as the paired ",
       "coalitions will not necessarily respect the causal ordering."
     ))
   }
 
   internal$parameters$extra_computation_args <- extra_computation_args
+
+  # Check and set the regular/semi-deterministic sampling
+  internal <- check_and_set_sampling_info(internal)
+
+  return(internal)
+}
+
+#' @author Lars Henry Berge Olsen
+#' @keywords internal
+check_and_set_sampling_info <- function(internal) {
+  semi_deterministic_sampling <- internal$parameters$extra_computation_args$semi_deterministic_sampling
+  paired_shap_sampling <- internal$parameters$extra_computation_args$paired_shap_sampling
+  type <- internal$parameters$type
+  asymmetric <- internal$parameters$asymmetric
+
+  # Only do checks if we are doing semi-deterministic sampling
+  if (semi_deterministic_sampling) {
+    if (!paired_shap_sampling) {
+      cli::cli_abort("`paired_shap_sampling` cannot be FALSE when `semi_deterministic_sampling` is TRUE.")
+    }
+
+    if (type != "regular") {
+      cli::cli_abort("`semi_deterministic_sampling` is not suppored for explain_forecast().")
+    }
+
+    if (asymmetric) {
+      cli::cli_abort("`semi_deterministic_sampling` is not supported for asymmetric Shapley values.")
+    }
+  }
+
+  # Skip for forecast as it is generated on the fly as the number of Shapley values changes with the horizon.
+  if (type != "forecast") {
+    # Get the information about which coalitions to sample and
+    # deterministically include at different number of coalitions
+    internal$objects$dt_coal_samp_info <- get_dt_coal_samp_info(
+      m = internal$parameters$n_shapley_values,
+      semi_deterministic_sampling = semi_deterministic_sampling
+    )
+  }
 
   return(internal)
 }
@@ -1058,6 +1144,12 @@ set_extra_comp_params <- function(internal) {
 #' computing the Shapley values. This is done to reduce the variance of the Shapley value estimates.
 #' `TRUE` is the default and is recommended for highest accuracy.
 #' For asymmetric, `FALSE` is the default and the only legal value.
+#' @param semi_deterministic_sampling Logical.
+#' If `FALSE` (default), then we sample from all coalitions.
+#' If `TRUE`, the sampling of coalitions is semi-deterministic, i.e. the sampling is done in a way that ensures that
+#' coalitions that are expected to be sampled based on the number of coalitions are deterministically included such
+#' that we sample among fewer coalitions. This is done to reduce the variance of the Shapley value estimates,
+#' and corresponds to the PySHAP* strategy in the paper \href{https://arxiv.org/pdf/2410.04883}{Olsen & Jullum (2024)}.
 #' @param kernelSHAP_reweighting String.
 #' How to reweight the sampling frequency weights in the kernelSHAP solution after sampling.
 #' The aim of this is to reduce the randomness and thereby the variance of the Shapley value estimates.
@@ -1074,6 +1166,11 @@ set_extra_comp_params <- function(internal) {
 #' whenever sampling based kernelSHAP is applied (either iteratively or with a fixed number of coalitions).
 #' @param n_boot_samps Integer. The number of bootstrapped samples (i.e. samples with replacement) from the set of all
 #' coalitions used to estimate the standard deviations of the Shapley value estimates.
+#' @param vS_batching_method String. The method used to perform batch computing of vS.
+#' `"future"` (default), utilizes [future.apply::future_apply] (via the [future::future] package),
+#' enabling parallelized computation and progress updates via [progressr::progressr].
+#' Alternatively, `"forloop"` can be used for straight forward sequential computation, which is mainly useful for
+#' package development and debugging purposes.
 #' @param max_batch_size Integer. The maximum number of coalitions to estimate simultaneously within each iteration.
 #' A larger numbers requires more memory, but may have a slight computational advantage.
 #' @param min_n_batches Integer. The minimum number of batches to split the computation into within each iteration.
@@ -1091,9 +1188,11 @@ set_extra_comp_params <- function(internal) {
 #'  arXiv preprint arXiv:2410.04883.}
 get_extra_comp_args_default <- function(internal, # Only used to get the default value of compute_sd
                                         paired_shap_sampling = isFALSE(internal$parameters$asymmetric),
+                                        semi_deterministic_sampling = FALSE,
                                         kernelSHAP_reweighting = "on_all_cond",
                                         compute_sd = isFALSE(internal$parameters$exact),
                                         n_boot_samps = 100,
+                                        vS_batching_method = "future",
                                         max_batch_size = 10,
                                         min_n_batches = 10) {
   return(mget(methods::formalArgs(get_extra_comp_args_default)[-1])) # [-1] to exclude internal
@@ -1105,19 +1204,30 @@ check_extra_computation_args <- function(extra_computation_args) {
 
   # paired_shap_sampling
   if (!is.logical(paired_shap_sampling) && length(paired_shap_sampling) == 1) {
-    stop("`paired_shap_sampling` must be a single logical.")
+    cli::cli_abort("`paired_shap_sampling` must be a single logical.")
+  }
+
+  # semi_deterministic_sampling
+  if (!is.logical(semi_deterministic_sampling) && length(semi_deterministic_sampling) == 1) {
+    cli::cli_abort("`semi_deterministic_sampling` must be a single logical.")
   }
 
   # kernelSHAP_reweighting
   if (!(length(kernelSHAP_reweighting) == 1 && kernelSHAP_reweighting %in%
     c("none", "on_N", "on_all", "on_all_cond"))) {
-    stop("`kernelSHAP_reweighting` must be one of `none`, `on_N`, `on_all`, `on_all_cond`.\n")
+    cli::cli_abort("`kernelSHAP_reweighting` must be one of `none`, `on_N`, `on_all`, `on_all_cond`.")
   }
 
   # compute_sd
   if (!(is.logical(compute_sd) &&
     length(compute_sd) == 1)) {
-    stop("`extra_computation_args$compute_sd` must be single logical.")
+    cli::cli_abort("`extra_computation_args$compute_sd` must be single logical.")
+  }
+
+  # vS_batching_method
+  if (!(length(vS_batching_method) == 1 && vS_batching_method %in%
+    c("future", "forloop"))) {
+    cli::cli_abort("`vS_batching_method` must be one of `future` or `forloop`.")
   }
 
   # n_boot_samps
@@ -1125,7 +1235,7 @@ check_extra_computation_args <- function(extra_computation_args) {
     length(n_boot_samps) == 1 &&
     !is.na(n_boot_samps) &&
     n_boot_samps > 0)) {
-    stop("`extra_computation_args$n_boot_samps` must be a single positive integer.")
+    cli::cli_abort("`extra_computation_args$n_boot_samps` must be a single positive integer.")
   }
 
   # max_batch_size
@@ -1134,7 +1244,7 @@ check_extra_computation_args <- function(extra_computation_args) {
       length(max_batch_size) == 1 &&
       !is.na(max_batch_size) &&
       max_batch_size > 0)) {
-    stop("`extra_computation_args$max_batch_size` must be NULL, Inf or a single positive integer.")
+    cli::cli_abort("`extra_computation_args$max_batch_size` must be NULL, Inf or a single positive integer.")
   }
 
   # min_n_batches
@@ -1143,7 +1253,7 @@ check_extra_computation_args <- function(extra_computation_args) {
       length(min_n_batches) == 1 &&
       !is.na(min_n_batches) &&
       min_n_batches > 0)) {
-    stop("`extra_computation_args$min_n_batches` must be NULL or a single positive integer.")
+    cli::cli_abort("`extra_computation_args$min_n_batches` must be NULL or a single positive integer.")
   }
 }
 
@@ -1168,12 +1278,11 @@ check_and_set_iterative <- function(internal) {
     unsupported <- approach[approach %in% c("vaeac", "regression_surrogate")]
 
     if (isTRUE(iterative)) {
-      warning(
-        paste0(
-          "Iterative estimation of Shapley values are not supported for approach = ",
-          paste0(unsupported, collapse = ", "), ". Setting iterative = FALSE."
-        )
+      msg <- paste0(
+        "Iterative estimation of Shapley values are not supported for approach = ",
+        paste0(unsupported, collapse = ", "), ". Setting iterative = FALSE."
       )
+      cli::cli_warn(c("!" = msg), immediate. = TRUE)
     }
 
     internal$parameters$iterative <- FALSE
@@ -1227,13 +1336,12 @@ check_computability <- function(internal) {
   if (asymmetric) {
     if (isTRUE(exact)) {
       if (max_n_coalitions_causal > 5000 && max_n_coalitions > 5000) {
-        warning(
-          paste0(
-            "Due to computation time, we recommend not computing asymmetric Shapley values exactly \n",
-            "with all valid causal coalitions (", max_n_coalitions_causal, ") when larger than 5000.\n",
-            "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE.\n"
-          )
+        msg1 <- paste0(
+          "Due to computation time, we recommend not computing asymmetric Shapley values exactly ",
+          "with all valid causal coalitions (", max_n_coalitions_causal, ") when larger than 5000."
         )
+        msg2 <- "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE."
+        cli::cli_warn(c("!" = msg1, " " = msg2), immediate. = TRUE)
       }
     }
   }
@@ -1241,50 +1349,50 @@ check_computability <- function(internal) {
   # Force user to use a natural number for n_coalitions if m > 13
   if (isTRUE(exact)) {
     if (isFALSE(is_groupwise) && n_features > 13) {
-      warning(
-        paste0(
-          "Due to computation time, we recommend not computing Shapley values exactly \n",
-          "with all 2^n_features (", 2^n_features, ") coalitions for n_features > 13.\n",
-          "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE.\n"
-        )
+      msg1 <- paste0(
+        "Due to computation time, we recommend not computing Shapley values exactly ",
+        "with all 2^n_features (", 2^n_features, ") coalitions for n_features > 13."
       )
+      msg2 <- "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE."
+      cli::cli_warn(c("!" = msg1, " " = msg2), immediate. = TRUE)
     }
     if (isTRUE(is_groupwise) && n_groups > 13) {
-      warning(
-        paste0(
-          "Due to computation time, we recommend not computing Shapley values exactly \n",
-          "with all 2^n_groups (", 2^n_groups, ") coalitions for n_groups > 13.\n",
-          "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE.\n"
-        )
+      msg1 <- paste0(
+        "Due to computation time, we recommend not computing Shapley values exactly ",
+        "with all 2^n_groups (", 2^n_groups, ") coalitions for n_groups > 13."
       )
+      msg2 <- "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE."
+      cli::cli_warn(c("!" = msg1, " " = msg2), immediate. = TRUE)
     }
     if (isTRUE(causal_sampling) && !is.null(max_n_coalitions_causal) && max_n_coalitions_causal > 1000) {
-      paste0(
-        "Due to computation time, we recommend not computing causal Shapley values exactly \n",
-        "with all valid causal coalitions when there are more than 1000 due to the long causal sampling time. \n",
-        "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE.\n"
+      msg1 <- paste0(
+        "Due to computation time, we recommend not computing causal Shapley values exactly ",
+        "with all valid causal coalitions when there are more than 1000 due to the long causal sampling time."
       )
+      msg2 <- "Consider reducing max_n_coalitions and enabling iterative estimation with iterative = TRUE."
+      cli::cli_warn(c("!" = msg1, " " = msg2), immediate. = TRUE)
     }
   } else {
     if (isFALSE(is_groupwise) && n_features > 30) {
-      warning(
-        "Due to computation time, we strongly recommend enabling iterative estimation with iterative = TRUE",
-        " when n_features > 30.\n"
+      msg <- paste0(
+        "Due to computation time, we strongly recommend enabling iterative estimation with iterative = TRUE ",
+        "when n_features > 30."
       )
+      cli::cli_warn(c("!" = msg), immediate. = TRUE)
     }
     if (isTRUE(is_groupwise) && n_groups > 30) {
-      warning(
-        "Due to computation time, we strongly recommend enabling iterative estimation with iterative = TRUE",
-        " when n_groups > 30.\n"
+      msg <- paste0(
+        "Due to computation time, we strongly recommend enabling iterative estimation with iterative = TRUE ",
+        "when n_groups > 30."
       )
+      cli::cli_warn(c("!" = msg), immediate. = TRUE)
     }
     if (isTRUE(causal_sampling) && !is.null(max_n_coalitions_causal) && max_n_coalitions_causal > 1000) {
-      warning(
-        paste0(
-          "Due to computation time, we strongly recommend enabling iterative estimation with iterative = TRUE ",
-          "when the number of valid causal coalitions are more than 1000 due to the long causal sampling time. \n"
-        )
+      msg <- paste0(
+        "Due to computation time, we strongly recommend enabling iterative estimation with iterative = TRUE ",
+        "when the number of valid causal coalitions are more than 1000 due to the long causal sampling time."
       )
+      cli::cli_warn(c("!" = msg), immediate. = TRUE)
     }
   }
 }
@@ -1295,22 +1403,22 @@ check_computability <- function(internal) {
 #' @keywords internal
 check_groups <- function(feature_names, group) {
   if (!is.list(group)) {
-    stop("group must be a list")
+    cli::cli_abort("group must be a list")
   }
 
   group_features <- unlist(group)
 
   # Checking that the group_features are characters
   if (!all(is.character(group_features))) {
-    stop("All components of group should be a character.")
+    cli::cli_abort("All components of group should be a character.")
   }
 
   # Check that all features in group are in feature labels or used by model
   if (!all(group_features %in% feature_names)) {
     missing_group_feature <- group_features[!(group_features %in% feature_names)]
-    stop(
+    cli::cli_abort(
       paste0(
-        "The group feature(s) ", paste0(missing_group_feature, collapse = ", "), " are not\n",
+        "The group feature(s) ", paste0(missing_group_feature, collapse = ", "), " are not ",
         "among the features in the data: ", paste0(feature_names, collapse = ", "), ". Delete from group."
       )
     )
@@ -1319,9 +1427,9 @@ check_groups <- function(feature_names, group) {
   # Check that all feature used by model are in group
   if (!all(feature_names %in% group_features)) {
     missing_features <- feature_names[!(feature_names %in% group_features)]
-    stop(
+    cli::cli_abort(
       paste0(
-        "The data feature(s) ", paste0(missing_features, collapse = ", "), " do not\n",
+        "The data feature(s) ", paste0(missing_features, collapse = ", "), " do not ",
         "belong to one of the groups. Add to a group."
       )
     )
@@ -1330,10 +1438,10 @@ check_groups <- function(feature_names, group) {
   # Check uniqueness of group_features
   if (length(group_features) != length(unique(group_features))) {
     dups <- group_features[duplicated(group_features)]
-    stop(
+    cli::cli_abort(
       paste0(
         "Feature(s) ", paste0(dups, collapse = ", "), " are found in more than one group or ",
-        "multiple times per group.\n",
+        "multiple times per group. ",
         "Make sure each feature is only represented in one group, and only once."
       )
     )
@@ -1341,10 +1449,10 @@ check_groups <- function(feature_names, group) {
 
   # Check that there are at least two groups
   if (length(group) == 1) {
-    stop(
+    cli::cli_abort(
       paste0(
         "You have specified only a single group named ", names(group), ", containing the features: ",
-        paste0(group_features, collapse = ", "), ".\n ",
+        paste0(group_features, collapse = ", "), ". ",
         "The predictions must be decomposed in at least two groups to be meaningful."
       )
     )
@@ -1364,9 +1472,9 @@ check_approach <- function(internal) {
     (length(approach) == 1 || length(approach) == n_features - 1) &&
     all(is.element(approach, supported_approaches)))
   ) {
-    stop(
+    cli::cli_abort(
       paste0(
-        "`approach` must be one of the following: '", paste0(supported_approaches, collapse = "', '"), "'.\n",
+        "`approach` must be one of the following: '", paste0(supported_approaches, collapse = "', '"), "'. ",
         "These can also be combined (except 'regression_surrogate' and 'regression_separate') by passing a vector ",
         "of length one less than the number of features (", n_features - 1, ")."
       )
@@ -1374,7 +1482,9 @@ check_approach <- function(internal) {
   }
 
   if (length(approach) > 1 && any(grepl("regression", approach))) {
-    stop("The `regression_separate` and `regression_surrogate` approaches cannot be combined with other approaches.")
+    cli::cli_abort(
+      "The `regression_separate` and `regression_surrogate` approaches cannot be combined with other approaches."
+    )
   }
 }
 
@@ -1400,17 +1510,17 @@ check_regression <- function(internal) {
 
   # Check that the model outputs one-dimensional predictions
   if (output_size != 1) {
-    stop("`regression_separate` and `regression_surrogate` only support models with one-dimensional output")
+    cli::cli_abort("`regression_separate` and `regression_surrogate` only support models with one-dimensional output.")
   }
 
   # Check that we are NOT explaining a forecast model
   if (type == "forecast") {
-    stop("`regression_separate` and `regression_surrogate` does not support `forecast`.")
+    cli::cli_abort("`regression_separate` and `regression_surrogate` does not support `forecast`.")
   }
 
   # Check that we are not to keep the Monte Carlo samples
   if (keep_samp_for_vS) {
-    stop(paste(
+    cli::cli_abort(paste(
       "`keep_samp_for_vS` must be `FALSE` for the `regression_separate` and `regression_surrogate`",
       "approaches as there are no Monte Carlo samples to keep for these approaches."
     ))
@@ -1436,19 +1546,21 @@ compare_vecs <- function(vec1, vec2, vec_type, name1, name2) {
       text_vec2 <- paste(names(vec2), vec1, sep = ": ", collapse = ", ")
     }
 
-    stop(paste0(
-      "Feature ", vec_type, " are not identical for ", name1, " and ", name2, ".\n",
-      name1, " provided: ", text_vec1, ",\n",
-      name2, " provided: ", text_vec2, ".\n"
-    ))
+    msg1 <- paste0("Feature ", vec_type, " are not identical for ", name1, " and ", name2, ". ")
+    msg2 <- paste0(name1, " provided: ", text_vec1, ", ")
+    msg3 <- paste0(name2, " provided: ", text_vec2, ".")
+
+    cli::cli_abort(c("!" = msg1, " " = msg2, " " = msg3))
   }
 }
 
 #' @keywords internal
 set_iterative_parameters <- function(internal, prev_iter_list = NULL) {
   iterative <- internal$parameters$iterative
+  type <- internal$parameters$type
 
   paired_shap_sampling <- internal$parameters$extra_computation_args$paired_shap_sampling
+  dt_coal_samp_info <- internal$objects$dt_coal_samp_info
 
   iterative_args <- internal$parameters$iterative_args
 
@@ -1466,6 +1578,11 @@ set_iterative_parameters <- function(internal, prev_iter_list = NULL) {
   # If paired_shap_sampling is TRUE, we need the number of coalitions to be even
   if (paired_shap_sampling) {
     iterative_args$initial_n_coalitions <- ceiling(iterative_args$initial_n_coalitions * 0.5) * 2
+  }
+
+  # Update exact if initial_n_coalitions was set to be equal to or larger than n_shapley_values^2
+  if (iterative_args$initial_n_coalitions >= internal$parameters$n_shapley_values^2) {
+    internal$parameters$exact <- TRUE
   }
 
   check_iterative_args(iterative_args)
@@ -1503,6 +1620,10 @@ set_iterative_parameters <- function(internal, prev_iter_list = NULL) {
       n_coal_next_iter_factor = iterative_args$n_coal_next_iter_factor_vec[1],
       n_batches = set_n_batches(iterative_args$initial_n_coalitions, internal)
     )
+    if (type != "forecast") {
+      internal$iter_list[[1]]$dt_coal_samp_info <-
+        dt_coal_samp_info[iterative_args$initial_n_coalitions <= n_coal_max][1]
+    }
   }
 
   return(internal)
@@ -1518,7 +1639,7 @@ check_iterative_args <- function(iterative_args) {
     !is.na(initial_n_coalitions) &&
     initial_n_coalitions <= max_n_coalitions &&
     initial_n_coalitions > 2)) {
-    stop("`iterative_args$initial_n_coalitions` must be a single integer between 2 and `max_n_coalitions`.")
+    cli::cli_abort("`iterative_args$initial_n_coalitions` must be a single integer between 2 and `max_n_coalitions`.")
   }
 
   # fixed_n_coalitions
@@ -1528,7 +1649,7 @@ check_iterative_args <- function(iterative_args) {
       !is.na(fixed_n_coalitions_per_iter) &&
       fixed_n_coalitions_per_iter <= max_n_coalitions &&
       fixed_n_coalitions_per_iter > 0)) {
-    stop(
+    cli::cli_abort(
       "`iterative_args$fixed_n_coalitions_per_iter` must be NULL or a single positive integer no larger than",
       "`max_n_coalitions`."
     )
@@ -1540,7 +1661,7 @@ check_iterative_args <- function(iterative_args) {
       length(max_iter) == 1 &&
       !is.na(max_iter) &&
       max_iter > 0)) {
-    stop("`iterative_args$max_iter` must be NULL, Inf or a single positive integer.")
+    cli::cli_abort("`iterative_args$max_iter` must be NULL, Inf or a single positive integer.")
   }
 
   # convergence_tol
@@ -1548,7 +1669,7 @@ check_iterative_args <- function(iterative_args) {
     !(length(convergence_tol) == 1 &&
       !is.na(convergence_tol) &&
       convergence_tol >= 0)) {
-    stop("`iterative_args$convergence_tol` must be NULL, 0, or a positive numeric.")
+    cli::cli_abort("`iterative_args$convergence_tol` must be NULL, 0, or a positive numeric.")
   }
 
   # n_coal_next_iter_factor_vec
@@ -1556,7 +1677,7 @@ check_iterative_args <- function(iterative_args) {
     !(all(!is.na(n_coal_next_iter_factor_vec)) &&
       all(n_coal_next_iter_factor_vec <= 1) &&
       all(n_coal_next_iter_factor_vec >= 0))) {
-    stop("`iterative_args$n_coal_next_iter_factor_vec` must be NULL or a vector or numerics between 0 and 1.")
+    cli::cli_abort("`iterative_args$n_coal_next_iter_factor_vec` must be NULL or a vector or numerics between 0 and 1.")
   }
 }
 
@@ -1598,32 +1719,33 @@ check_vs_prev_shapr_object <- function(internal) {
   converged_max_n_coalitions <- internal$iter_list[[iter]]$converged_max_n_coalitions
 
   if (isTRUE(converged)) {
-    message0 <- "Convergence reached before estimation start.\n"
+    message0 <- "Convergence reached before estimation start."
     if (isTRUE(converged_exact)) {
       message0 <- c(
         message0,
-        "All coalitions estimated. No need for further estimation.\n"
+        "All coalitions estimated. No need for further estimation."
       )
     }
     if (isTRUE(converged_sd)) {
       message0 <- c(
         message0,
-        "Convergence tolerance reached. Consider decreasing `iterative_args$tolerance`.\n"
+        "Convergence tolerance reached. Consider decreasing `iterative_args$tolerance`."
       )
     }
     if (isTRUE(converged_max_iter)) {
       message0 <- c(
         message0,
-        "Maximum number of iterations reached. Consider increasing `iterative_args$max_iter`.\n"
+        "Maximum number of iterations reached. Consider increasing `iterative_args$max_iter`."
       )
     }
     if (isTRUE(converged_max_n_coalitions)) {
       message0 <- c(
         message0,
-        "Maximum number of coalitions reached. Consider increasing `max_n_coalitions`.\n"
+        "Maximum number of coalitions reached. Consider increasing `max_n_coalitions`."
       )
     }
-    stop(message0)
+    names(message0) <- rep("!", length(message0))
+    cli::cli_abort(message0)
   }
 }
 

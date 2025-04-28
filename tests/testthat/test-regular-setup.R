@@ -1202,6 +1202,7 @@ test_that("incompatible input: `data/approach`", {
 })
 
 test_that("Correct dimension of S when sampling combinations", {
+  skip_if_not_installed("party")
   max_n_coalitions <- 10
 
   res <- explain(
@@ -1336,6 +1337,7 @@ test_that("Shapr with `max_n_coalitions` >= 2^m uses exact Shapley kernel weight
 })
 
 test_that("Correct dimension of S when sampling combinations with groups", {
+  skip_if_not_installed("party")
   max_n_coalitions <- 6
 
   groups <- list(
@@ -1405,7 +1407,9 @@ test_that("data feature ordering is output_lm_numeric_column_order", {
 })
 
 test_that("parallelization gives same output for any approach", {
-  testthat::skip_on_cran() # Avoiding CRAN Note: Running R code in ‘testthat.R’ had CPU time 3.6 times elapsed time
+  skip_if_not_installed("party")
+  skip_if_not_installed("future")
+
   # Empirical is seed independent
   explain.empirical_sequential <- explain(
     testing = TRUE,
@@ -1524,6 +1528,7 @@ test_that("gaussian approach use the user provided parameters", {
 
 
 test_that("setting the seed for combined approaches works", {
+  skip_if_not_installed("party")
   # Check that setting the seed works for a combination of approaches
   explanation_combined_1 <- explain(
     testing = TRUE,
@@ -1550,6 +1555,7 @@ test_that("setting the seed for combined approaches works", {
 })
 
 test_that("counting the number of unique approaches", {
+  skip_if_not_installed("party")
   # Test several combinations of combined approaches and check that the number of
   # counted unique approaches is correct.
   # Recall that the last approach is not counted in `n_unique_approaches` as
@@ -1619,6 +1625,8 @@ test_that("counting the number of unique approaches", {
 
 
 test_that("vaeac_set_seed_works", {
+  skip_if_not_installed("torch")
+  skip_if_not_installed("coro")
   skip_if_not(torch::torch_is_installed())
   # Train two vaeac models with the same seed
   explanation_vaeac_1 <- explain(
@@ -1660,6 +1668,8 @@ test_that("vaeac_set_seed_works", {
 })
 
 test_that("vaeac_pretreained_vaeac_model", {
+  skip_if_not_installed("torch")
+  skip_if_not_installed("coro")
   skip_if_not(torch::torch_is_installed())
 
   # Test that we can skip training a new vaeac model if we already
@@ -1814,7 +1824,6 @@ test_that("output_custom_lm_numeric_independence_2", {
   )
 })
 
-
 # Just checking that internal$output$dt_samp_for_vS  works
 test_that("output_lm_numeric_independence_keep_samp_for_vS", {
   expect_snapshot_rds(
@@ -1833,4 +1842,59 @@ test_that("output_lm_numeric_independence_keep_samp_for_vS", {
   )
 
   expect_false(is.null(out$internal$output$dt_samp_for_vS))
+})
+
+
+# Checking that vS_batching_method works and gives same results
+test_that("output_lm_numeric_vS_batching_method", {
+  skip_if_not_installed("party")
+
+  expect_snapshot_rds(
+    (ex_forloop <- explain(
+      testing = TRUE,
+      model = model_lm_numeric,
+      x_explain = x_explain_numeric,
+      x_train = x_train_numeric,
+      approach = "ctree",
+      phi0 = p0,
+      seed = 1,
+      extra_computation_args = list(vS_batching_method = "forloop"),
+      iterative = TRUE,
+      ctree.sample = FALSE
+    )),
+    "output_lm_numeric_vS_batching_method"
+  )
+
+  ex_future <- explain(
+    testing = TRUE,
+    model = model_lm_numeric,
+    x_explain = x_explain_numeric,
+    x_train = x_train_numeric,
+    approach = "ctree",
+    phi0 = p0,
+    seed = 1,
+    extra_computation_args = list(vS_batching_method = "future"), # default
+    iterative = TRUE,
+    ctree.sample = FALSE
+  )
+
+  # Should get identical Shapley values for every iteration since there is no randomness in the vS computation
+  expect_equal(
+    ex_forloop$iterative_results$dt_iter_shapley_est,
+    ex_future$iterative_results$dt_iter_shapley_est
+  )
+
+  # Likewise for the sd
+  expect_equal(
+    ex_forloop$iterative_results$dt_iter_shapley_sd,
+    ex_future$iterative_results$dt_iter_shapley_sd
+  )
+
+  # The two batching methods outputs vS_lists with different names, showing they are computed differently
+  expect_false(
+    identical(
+      names(ex_forloop$internal$iter_list[[1]]$vS_list),
+      names(ex_future$internal$iter_list[[1]]$vS_list)
+    )
+  )
 })

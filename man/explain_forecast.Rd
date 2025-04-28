@@ -150,19 +150,18 @@ Can also be used to override the default function for natively supported model c
 \item{verbose}{String vector or NULL.
 Specifies the verbosity (printout detail level) through one or more of strings \code{"basic"}, \code{"progress"},
 \code{"convergence"}, \code{"shapley"} and \code{"vS_details"}.
-\code{"basic"} (default) displays basic information about the computation which is being performed.
+\code{"basic"} (default) displays basic information about the computation which is being performed,
+in addition to some messages about parameters being sets or checks being unavailable due to specific input.
 \verb{"progress} displays information about where in the calculation process the function currently is.
 #' \code{"convergence"} displays information on how close to convergence the Shapley value estimates are
 (only when \code{iterative = TRUE}) .
 \code{"shapley"} displays intermediate Shapley value estimates and standard deviations (only when \code{iterative = TRUE})
-\itemize{
-\item the final estimates.
+and the final estimates.
 \code{"vS_details"} displays information about the v_S estimates.
 This is most relevant for \verb{approach \%in\% c("regression_separate", "regression_surrogate", "vaeac"}).
 \code{NULL} means no printout.
 Note that any combination of four strings can be used.
-E.g. \code{verbose = c("basic", "vS_details")} will display basic information + details about the v(S)-estimation process.
-}}
+E.g. \code{verbose = c("basic", "vS_details")} will display basic information + details about the v(S)-estimation process.}
 
 \item{extra_computation_args}{Named list.
 Specifies extra arguments related to the computation of the Shapley values.
@@ -364,7 +363,7 @@ groupShapley: A practical perspective. Italian Workshop on Explainable Artificia
 \item \href{https://martinjullum.com/publication/redelmeier-2020-explaining/redelmeier-2020-explaining.pdf}{
 Redelmeier, A., Jullum, M., & Aas, K. (2020). Explaining predictive models with mixed features using Shapley
 values and conditional inference trees. In Machine Learning and Knowledge Extraction:
-International Cross-Domain Conference, CD-MAKE 2020, Dublin, Ireland, August 25–28, 2020, Proceedings 4
+International Cross-Domain Conference, CD-MAKE 2020, Dublin, Ireland, August 25-28, 2020, Proceedings 4
 (pp. 117-137). Springer International Publishing.}
 \item \href{https://www.theoj.org/joss-papers/joss.02027/10.21105.joss.02027.pdf}{
 Sellereite N., & Jullum, M. (2019). shapr: An R-package for explaining machine learning models with

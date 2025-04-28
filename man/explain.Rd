@@ -100,19 +100,18 @@ If \code{NULL} (default) no seed is set in the calling environment.}
 \item{verbose}{String vector or NULL.
 Specifies the verbosity (printout detail level) through one or more of strings \code{"basic"}, \code{"progress"},
 \code{"convergence"}, \code{"shapley"} and \code{"vS_details"}.
-\code{"basic"} (default) displays basic information about the computation which is being performed.
+\code{"basic"} (default) displays basic information about the computation which is being performed,
+in addition to some messages about parameters being sets or checks being unavailable due to specific input.
 \verb{"progress} displays information about where in the calculation process the function currently is.
 #' \code{"convergence"} displays information on how close to convergence the Shapley value estimates are
 (only when \code{iterative = TRUE}) .
 \code{"shapley"} displays intermediate Shapley value estimates and standard deviations (only when \code{iterative = TRUE})
-\itemize{
-\item the final estimates.
+and the final estimates.
 \code{"vS_details"} displays information about the v_S estimates.
 This is most relevant for \verb{approach \%in\% c("regression_separate", "regression_surrogate", "vaeac"}).
 \code{NULL} means no printout.
 Note that any combination of four strings can be used.
-E.g. \code{verbose = c("basic", "vS_details")} will display basic information + details about the v(S)-estimation process.
-}}
+E.g. \code{verbose = c("basic", "vS_details")} will display basic information + details about the v(S)-estimation process.}
 
 \item{predict_model}{Function.
 The prediction function used when \code{model} is not natively supported.
@@ -513,23 +512,26 @@ explain_groups <- explain(
 print(explain_groups$shapley_values_est)
 
 # Separate and surrogate regression approaches with linear regression models.
-explain_separate_lm <- explain(
-  model = model,
-  x_explain = x_explain,
-  x_train = x_train,
-  phi0 = p,
-  approach = "regression_separate",
-  regression.model = parsnip::linear_reg()
-)
+req_pkgs <- c("parsnip", "recipes", "workflows", "rsample", "tune", "yardstick")
+if (requireNamespace(req_pkgs, quietly = TRUE)) {
+  explain_separate_lm <- explain(
+    model = model,
+    x_explain = x_explain,
+    x_train = x_train,
+    phi0 = p,
+    approach = "regression_separate",
+    regression.model = parsnip::linear_reg()
+  )
 
-explain_surrogate_lm <- explain(
-  model = model,
-  x_explain = x_explain,
-  x_train = x_train,
-  phi0 = p,
-  approach = "regression_surrogate",
-  regression.model = parsnip::linear_reg()
-)
+  explain_surrogate_lm <- explain(
+    model = model,
+    x_explain = x_explain,
+    x_train = x_train,
+    phi0 = p,
+    approach = "regression_surrogate",
+    regression.model = parsnip::linear_reg()
+  )
+}
 
 # Iterative estimation
 # For illustration purposes only. By default not used for such small dimensions as here
@@ -573,7 +575,7 @@ groupShapley: A practical perspective. Italian Workshop on Explainable Artificia
 \item \href{https://martinjullum.com/publication/redelmeier-2020-explaining/redelmeier-2020-explaining.pdf}{
 Redelmeier, A., Jullum, M., & Aas, K. (2020). Explaining predictive models with mixed features using Shapley
 values and conditional inference trees. In Machine Learning and Knowledge Extraction:
-International Cross-Domain Conference, CD-MAKE 2020, Dublin, Ireland, August 25–28, 2020, Proceedings 4
+International Cross-Domain Conference, CD-MAKE 2020, Dublin, Ireland, August 25-28, 2020, Proceedings 4
 (pp. 117-137). Springer International Publishing.}
 \item \href{https://www.theoj.org/joss-papers/joss.02027/10.21105.joss.02027.pdf}{
 Sellereite N., & Jullum, M. (2019). shapr: An R-package for explaining machine learning models with

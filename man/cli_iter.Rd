@@ -10,19 +10,18 @@ cli_iter(verbose, internal, iter)
 \item{verbose}{String vector or NULL.
 Specifies the verbosity (printout detail level) through one or more of strings \code{"basic"}, \code{"progress"},
 \code{"convergence"}, \code{"shapley"} and \code{"vS_details"}.
-\code{"basic"} (default) displays basic information about the computation which is being performed.
+\code{"basic"} (default) displays basic information about the computation which is being performed,
+in addition to some messages about parameters being sets or checks being unavailable due to specific input.
 \verb{"progress} displays information about where in the calculation process the function currently is.
 #' \code{"convergence"} displays information on how close to convergence the Shapley value estimates are
 (only when \code{iterative = TRUE}) .
 \code{"shapley"} displays intermediate Shapley value estimates and standard deviations (only when \code{iterative = TRUE})
-\itemize{
-\item the final estimates.
+and the final estimates.
 \code{"vS_details"} displays information about the v_S estimates.
 This is most relevant for \verb{approach \%in\% c("regression_separate", "regression_surrogate", "vaeac"}).
 \code{NULL} means no printout.
 Note that any combination of four strings can be used.
-E.g. \code{verbose = c("basic", "vS_details")} will display basic information + details about the v(S)-estimation process.
-}}
+E.g. \code{verbose = c("basic", "vS_details")} will display basic information + details about the v(S)-estimation process.}
 
 \item{internal}{List.
 Not used directly, but passed through from \code{\link[=explain]{explain()}}.}

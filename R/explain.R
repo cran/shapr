@@ -86,12 +86,13 @@
 #' @param verbose String vector or NULL.
 #' Specifies the verbosity (printout detail level) through one or more of strings `"basic"`, `"progress"`,
 #'  `"convergence"`, `"shapley"` and `"vS_details"`.
-#' `"basic"` (default) displays basic information about the computation which is being performed.
+#' `"basic"` (default) displays basic information about the computation which is being performed,
+#' in addition to some messages about parameters being sets or checks being unavailable due to specific input.
 #' `"progress` displays information about where in the calculation process the function currently is.
 #' #' `"convergence"` displays information on how close to convergence the Shapley value estimates are
 #' (only when `iterative = TRUE`) .
 #' `"shapley"` displays intermediate Shapley value estimates and standard deviations (only when `iterative = TRUE`)
-#' + the final estimates.
+#' and the final estimates.
 #' `"vS_details"` displays information about the v_S estimates.
 #' This is most relevant for `approach %in% c("regression_separate", "regression_surrogate", "vaeac"`).
 #' `NULL` means no printout.
@@ -358,23 +359,26 @@
 #' print(explain_groups$shapley_values_est)
 #'
 #' # Separate and surrogate regression approaches with linear regression models.
-#' explain_separate_lm <- explain(
-#'   model = model,
-#'   x_explain = x_explain,
-#'   x_train = x_train,
-#'   phi0 = p,
-#'   approach = "regression_separate",
-#'   regression.model = parsnip::linear_reg()
-#' )
+#' req_pkgs <- c("parsnip", "recipes", "workflows", "rsample", "tune", "yardstick")
+#' if (requireNamespace(req_pkgs, quietly = TRUE)) {
+#'   explain_separate_lm <- explain(
+#'     model = model,
+#'     x_explain = x_explain,
+#'     x_train = x_train,
+#'     phi0 = p,
+#'     approach = "regression_separate",
+#'     regression.model = parsnip::linear_reg()
+#'   )
 #'
-#' explain_surrogate_lm <- explain(
-#'   model = model,
-#'   x_explain = x_explain,
-#'   x_train = x_train,
-#'   phi0 = p,
-#'   approach = "regression_surrogate",
-#'   regression.model = parsnip::linear_reg()
-#' )
+#'   explain_surrogate_lm <- explain(
+#'     model = model,
+#'     x_explain = x_explain,
+#'     x_train = x_train,
+#'     phi0 = p,
+#'     approach = "regression_surrogate",
+#'     regression.model = parsnip::linear_reg()
+#'   )
+#' }
 #'
 #' # Iterative estimation
 #' # For illustration purposes only. By default not used for such small dimensions as here
@@ -421,7 +425,7 @@
 #'   - \href{https://martinjullum.com/publication/redelmeier-2020-explaining/redelmeier-2020-explaining.pdf}{
 #'   Redelmeier, A., Jullum, M., & Aas, K. (2020). Explaining predictive models with mixed features using Shapley
 #'   values and conditional inference trees. In Machine Learning and Knowledge Extraction:
-#'   International Cross-Domain Conference, CD-MAKE 2020, Dublin, Ireland, August 25–28, 2020, Proceedings 4
+#'   International Cross-Domain Conference, CD-MAKE 2020, Dublin, Ireland, August 25-28, 2020, Proceedings 4
 #'   (pp. 117-137). Springer International Publishing.}
 #'   - \href{https://www.theoj.org/joss-papers/joss.02027/10.21105.joss.02027.pdf}{
 #'   Sellereite N., & Jullum, M. (2019). shapr: An R-package for explaining machine learning models with
@@ -456,7 +460,6 @@ explain <- function(model,
                     iterative_args = list(),
                     output_args = list(),
                     ...) { # ... is further arguments passed to specific approaches
-
 
 
   init_time <- Sys.time()
@@ -539,7 +542,7 @@ explain <- function(model,
     # Compute the vS
     vS_list <- compute_vS(internal, model, predict_model)
 
-    # Compute shapley value estimated and bootstrapped standard deviations
+    # Compute Shapley value estimates and bootstrapped standard deviations
     internal <- compute_estimates(internal, vS_list)
 
     # Check convergence based on estimates and standard deviations (and thresholds)
@@ -613,11 +616,10 @@ testing_cleanup <- function(output) {
       NULL
   }
 
-  # Removing the fit times for regression surrogate models
+  # Removing the the model object for regression surrogate models to avoid non-reproducibility
+  # in both fit-times and model object structure
   if ("regression_surrogate" %in% output$internal$parameters$approach) {
-    # Deletes the fit_times for approach = regression_surrogate to make tests pass.
-    output$internal$objects$regression.surrogate_model$pre$mold$blueprint$recipe$fit_times <- NULL
-    output$internal$objects$regression.surrogate_model$fit$fit$elapsed <- NULL
+    output$internal$objects$regression.surrogate_model <- NULL
   }
 
   # Delete the saving_path

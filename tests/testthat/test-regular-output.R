@@ -67,6 +67,27 @@ test_that("output_lm_numeric_empirical_n_coalitions", {
   )
 })
 
+test_that("output_lm_numeric_empirical_n_coal_unpaired_on_N", {
+  expect_snapshot_rds(
+    explain(
+      testing = TRUE,
+      model = model_lm_numeric,
+      x_explain = x_explain_numeric,
+      x_train = x_train_numeric,
+      approach = "empirical",
+      phi0 = p0,
+      seed = 1,
+      max_n_coalitions = 20,
+      iterative = FALSE,
+      extra_computation_args = list(
+        kernelSHAP_reweighting = "on_N",
+        paired_shap_sampling = FALSE
+      )
+    ),
+    "output_lm_numeric_empirical_n_coal_unpaired_on_N"
+  )
+})
+
 test_that("output_lm_numeric_empirical_independence", {
   set.seed(123)
   expect_snapshot_rds(
@@ -156,6 +177,8 @@ test_that("output_lm_numeric_copula", {
 })
 
 test_that("output_lm_numeric_ctree", {
+  skip_if_not_installed("party")
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -173,7 +196,10 @@ test_that("output_lm_numeric_ctree", {
 
 test_that("output_lm_numeric_vaeac", {
   skip_on_os("mac") # The code runs on macOS, but it gives different Shapley values due to inconsistencies in torch seed
+  skip_if_not_installed("torch")
+  skip_if_not_installed("coro")
   skip_if_not(torch::torch_is_installed())
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -198,6 +224,8 @@ test_that("output_lm_numeric_vaeac", {
 })
 
 test_that("output_lm_categorical_ctree", {
+  skip_if_not_installed("party")
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -215,7 +243,10 @@ test_that("output_lm_categorical_ctree", {
 
 test_that("output_lm_categorical_vaeac", {
   skip_on_os("mac") # The code runs on macOS, but it gives different Shapley values due to inconsistencies in torch seed
+  skip_if_not_installed("torch")
+  skip_if_not_installed("coro")
   skip_if_not(torch::torch_is_installed())
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -289,6 +320,8 @@ test_that("output_lm_ts_timeseries", {
 })
 
 test_that("output_lm_numeric_comb1", {
+  skip_if_not_installed("party")
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -305,6 +338,8 @@ test_that("output_lm_numeric_comb1", {
 })
 
 test_that("output_lm_numeric_comb2", {
+  skip_if_not_installed("party")
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -356,6 +391,8 @@ test_that("output_lm_mixed_independence", {
 })
 
 test_that("output_lm_mixed_ctree", {
+  skip_if_not_installed("party")
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -373,7 +410,10 @@ test_that("output_lm_mixed_ctree", {
 
 test_that("output_lm_mixed_vaeac", {
   skip_on_os("mac") # The code runs on macOS, but it gives different Shapley values due to inconsistencies in torch seed
+  skip_if_not_installed("torch")
+  skip_if_not_installed("coro")
   skip_if_not(torch::torch_is_installed())
+
   expect_snapshot_rds(
     explain(
       testing = TRUE,
@@ -398,6 +438,8 @@ test_that("output_lm_mixed_vaeac", {
 })
 
 test_that("output_lm_mixed_comb", {
+  skip_if_not_installed("party")
+
   set.seed(123)
   expect_snapshot_rds(
     explain(
@@ -445,56 +487,57 @@ test_that("output_custom_lm_numeric_independence_1", {
 
 
 test_that("output_custom_xgboost_mixed_dummy_ctree", {
-  if (requireNamespace("xgboost", quietly = TRUE)) {
-    x_train_mixed_dummy <- model.matrix(~ . + 0, x_train_mixed)
-    x_explain_mixed_dummy <- model.matrix(~ . + 0, x_explain_mixed)
+  skip_if_not_installed("party")
+  skip_if_not_installed("xgboost")
 
-    y_train <- data_train[, get(y_var_numeric)]
+  x_train_mixed_dummy <- model.matrix(~ . + 0, x_train_mixed)
+  x_explain_mixed_dummy <- model.matrix(~ . + 0, x_explain_mixed)
 
-    # Fitting a basic xgboost model to the training data
-    model_xgboost_mixed_dummy <- xgboost::xgboost(
-      data = x_train_mixed_dummy,
-      label = y_train,
-      nround = 20,
-      verbose = FALSE
-    )
+  y_train <- data_train[, get(y_var_numeric)]
 
-    predict_model.xgboost_dummy <- function(x, newdata) {
-      newdata_dummy <- model.matrix(~ . + 0, newdata)
+  # Fitting a basic xgboost model to the training data
+  model_xgboost_mixed_dummy <- xgboost::xgboost(
+    data = x_train_mixed_dummy,
+    label = y_train,
+    nround = 20,
+    verbose = FALSE
+  )
 
-      predict(x, newdata_dummy)
-    }
+  predict_model.xgboost_dummy <- function(x, newdata) {
+    newdata_dummy <- model.matrix(~ . + 0, newdata)
 
-    # Check that created predict_model works as intended
-    expect_equal(
-      predict_model.xgboost_dummy(model_xgboost_mixed_dummy, x_explain_mixed),
-      predict(model_xgboost_mixed_dummy, x_explain_mixed_dummy)
-    )
-
-    # Specifying the phi_0, i.e. the expected prediction without any features
-    p0 <- data_train[, mean(get(y_var_numeric))]
-
-
-    expect_snapshot_rds(
-      {
-        custom <- explain(
-          testing = TRUE,
-          model = model_xgboost_mixed_dummy,
-          x_train = x_train_mixed,
-          x_explain = x_explain_mixed,
-          approach = "ctree",
-          phi0 = p0,
-          seed = 1,
-          predict_model = predict_model.xgboost_dummy,
-          get_model_specs = NA,
-          iterative = FALSE
-        )
-        #      custom$internal$objects$predict_model <- "Del on purpose" # Avoids issues with xgboost package updates
-        custom
-      },
-      "output_custom_xgboost_mixed_dummy_ctree"
-    )
+    predict(x, newdata_dummy)
   }
+
+  # Check that created predict_model works as intended
+  expect_equal(
+    predict_model.xgboost_dummy(model_xgboost_mixed_dummy, x_explain_mixed),
+    predict(model_xgboost_mixed_dummy, x_explain_mixed_dummy)
+  )
+
+  # Specifying the phi_0, i.e. the expected prediction without any features
+  p0 <- data_train[, mean(get(y_var_numeric))]
+
+
+  expect_snapshot_rds(
+    {
+      custom <- explain(
+        testing = TRUE,
+        model = model_xgboost_mixed_dummy,
+        x_train = x_train_mixed,
+        x_explain = x_explain_mixed,
+        approach = "ctree",
+        phi0 = p0,
+        seed = 1,
+        predict_model = predict_model.xgboost_dummy,
+        get_model_specs = NA,
+        iterative = FALSE
+      )
+      #      custom$internal$objects$predict_model <- "Del on purpose" # Avoids issues with xgboost package updates
+      custom
+    },
+    "output_custom_xgboost_mixed_dummy_ctree"
+  )
 })
 
 test_that("output_lm_numeric_interaction", {
@@ -516,7 +559,9 @@ test_that("output_lm_numeric_interaction", {
 })
 
 test_that("output_lm_numeric_ctree_parallelized", {
-  testthat::skip_on_cran() # Avoiding CRAN Note: Running R code in ‘testthat.R’ had CPU time 3.6 times elapsed time
+  skip_if_not_installed("party")
+  skip_if_not_installed("future")
+
   future::plan("multisession", workers = 2)
   expect_snapshot_rds(
     {
@@ -539,6 +584,8 @@ test_that("output_lm_numeric_ctree_parallelized", {
 # Nothing special here, as the test does not record the actual progress output.
 # It just checks whether calling on progressr does not produce an error or unexpected output.
 test_that("output_lm_numeric_empirical_progress", {
+  skip_if_not_installed("progressr")
+
   progressr::handlers("txtprogressbar")
   expect_snapshot_rds(
     {
