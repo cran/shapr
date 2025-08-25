@@ -25,11 +25,11 @@ check_convergence <- function(internal) {
   dt_shapley_sd <- internal$iter_list[[iter]]$dt_shapley_sd
 
   if (!all.equal(names(dt_shapley_est), names(dt_shapley_sd))) {
-    cli::cli_abort("The column names of the dt_shapley_est and dt_shapley_df are not equal.")
+    cli::cli_abort("The column names of dt_shapley_est and dt_shapley_sd are not equal.")
   }
 
   max_sd <- dt_shapley_sd[, max(.SD, na.rm = TRUE), .SDcols = shap_names_with_none, by = .I]$V1 # Max per prediction
-  max_sd0 <- max_sd * sqrt(n_sampled_coalitions) # Scales UP the sd as it scales at this rate
+  max_sd0 <- max_sd * sqrt(n_sampled_coalitions) # Scale up the SD; it increases at this rate
 
   dt_shapley_est0 <- copy(dt_shapley_est)
 
@@ -46,7 +46,7 @@ check_convergence <- function(internal) {
       dt_shapley_est0[, max_sd0 := max_sd0]
       dt_shapley_est0[, req_samples := (max_sd0 / ((maxval - minval) * convergence_tol))^2]
       dt_shapley_est0[, conv_measure := max_sd0 / ((maxval - minval) * sqrt(n_sampled_coalitions))]
-      dt_shapley_est0[, req_samples := min(req_samples, 2^n_shapley_values - 2)]
+      dt_shapley_est0[, req_samples := pmin(req_samples, 2^n_shapley_values - 2)]
 
       est_required_coal_samp <- ceiling(dt_shapley_est0[, median(req_samples)])
       if (isTRUE(paired_shap_sampling)) {

@@ -7,6 +7,9 @@
 #' \href{https://martinjullum.com/publication/aas-2021-explaining/aas-2021-explaining.pdf}{Aas, et. al (2021)}
 # nolint end
 #' for a thorough introduction to dependence-aware prediction explanation with Shapley values.
+#' For an overview of the methodology and capabilities of the `shapr` package, see the software paper
+#' \href{https://arxiv.org/pdf/2504.01842}{Jullum et al. (2025)}, or the pkgdown site at
+#' [norskregnesentral.github.io/shapr/](https://norskregnesentral.github.io/shapr/).
 #'
 #' @inheritParams explain
 #' @param y Matrix, data.frame/data.table or a numeric vector.
@@ -63,7 +66,9 @@
 #' approaches to work in the same way they do for time-invariant models.
 #'
 #' See the \href{https://norskregnesentral.github.io/shapr/articles/general_usage.html#forecasting}{
-#' forecasting section of the general usages} for further details.
+#' forecasting section of the general usage vignette} for further details.
+#' See also the software paper \href{https://arxiv.org/pdf/2504.01842}{Jullum et al. (2025, Sec. 6)}
+#' for a more detailed introduction to the methodology, and additional examples.
 #'
 #' @author Jon Lachmann, Martin Jullum
 #' @examples
@@ -131,8 +136,8 @@ explain_forecast <- function(model,
   }
 
   # Sets up and organizes input parameters
-  # Checks the input parameters and their compatability
-  # Checks data/model compatability
+  # Checks the input parameters and their compatibility
+  # Checks data/model compatibility
   internal <- setup(
     approach = approach,
     phi0 = phi0,
@@ -155,6 +160,7 @@ explain_forecast <- function(model,
     group = group,
     verbose = verbose,
     extra_computation_args = extra_computation_args,
+    model_class = class(model)[1],
     iterative_args = iterative_args,
     output_args = output_args,
     ...
@@ -189,7 +195,7 @@ explain_forecast <- function(model,
     set.seed(seed)
   }
 
-  cli_startup(internal, class(model), verbose)
+  cli_startup(internal, verbose)
 
   while (converged == FALSE) {
     cli_iter(verbose, internal, iter)
@@ -299,7 +305,7 @@ get_data_forecast <- function(y, xreg, train_idx, explain_idx, explain_y_lags, e
     xreg <- as.matrix(xreg)
     # Check column names
     if (all(is.null(colnames(xreg)))) {
-      cli::cli_abort("`xreg` misses column names.")
+      cli::cli_abort("`xreg` is missing column names.")
     }
 
     if (ncol(xreg) != length(explain_xreg_lags)) {

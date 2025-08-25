@@ -3,29 +3,29 @@
 #' @inheritParams explain_forecast
 #' @inheritParams default_doc_internal
 #' @param type Character.
-#' Either "regular" or "forecast" corresponding to function `setup()` is called from,
-#' correspondingly the type of explanation that should be generated.
+#' Either "regular" or "forecast", matching the function the call originated from,
+#' and thus the type of explanation to generate.
 #'
 #' @param feature_specs List. The output from [get_model_specs()] or [get_data_specs()].
-#' Contains the 3 elements:
+#' Contains the three elements:
 #' \describe{
 #'   \item{labels}{Character vector with the names of each feature.}
-#'   \item{classes}{Character vector with the classes of each features.}
+#'   \item{classes}{Character vector with the classes of each feature.}
 #'   \item{factor_levels}{Character vector with the levels for any categorical features.}
 #'   }
 #' @param is_python Logical.
 #' Indicates whether the function is called from the Python wrapper.
-#' Default is FALSE which is never changed when calling the function via `explain()` in R.
-#' The parameter is later used to disallow running the AICc-versions of the empirical method
-#' as that requires data based optimization, which is not supported in `shaprpy`.
+#' Default is FALSE, which is never changed when calling the function via `explain()` in R.
+#' The parameter is later used to disallow running the AICc versions of the empirical method,
+#' as that requires data-based optimization, which is not supported in `shaprpy`.
 #' @param testing Logical.
-#' Only use to remove random components like timing from the object output when comparing output with testthat.
+#' Only used to remove random components, like timing, from the output when comparing with testthat.
 #' Defaults to `FALSE`.
-#' @param init_time POSIXct object.
-#' The time when the `explain()` function was called, as outputted by `Sys.time()`.
-#' Used to calculate the time it took to run the full `explain` call.
+#' @param init_time POSIXct.
+#' The time when the `explain()` function was called, as returned by `Sys.time()`.
+#' Used to calculate the total time of the `explain()` call.
 #'
-#' @return A internal list, containing parameters, info, data and computations needed for the later computations.
+#' @return An internal list containing parameters, info, data, and computations needed for later steps.
 #'  The list is expanded and modified in other functions.
 #' @export
 #' @keywords internal
@@ -60,6 +60,7 @@ setup <- function(x_train,
                   confounding = NULL,
                   output_args = list(),
                   extra_computation_args = list(),
+                  model_class,
                   ...) {
   internal <- list()
 
@@ -81,11 +82,11 @@ setup <- function(x_train,
   )
 
 
-  # Using parameters and iter_list from a previouys  to continue estimation from on previous shapr objects
+  # Use parameters and iter_list from a previous shapr object to continue estimation
   if (is.null(prev_shapr_object)) {
     prev_iter_list <- NULL
   } else {
-    # Overwrite the input arguments set in explain() with those from in prev_shapr_object
+    # Overwrite selected input arguments set in explain() with those from prev_shapr_object
     # except model, x_explain, x_train, max_n_coalitions, iterative_args, seed
     prev_internal <- get_prev_internal(prev_shapr_object)
 
@@ -120,6 +121,7 @@ setup <- function(x_train,
     confounding = confounding,
     output_args = output_args,
     extra_computation_args = extra_computation_args,
+    model_class = model_class,
     ...
   )
 
@@ -197,6 +199,7 @@ get_parameters <- function(approach,
                            output_args = list(),
                            extra_computation_args = list(),
                            testing = FALSE,
+                           model_class = model_class,
                            ...) {
   # approach is checked comprehensively later
 
@@ -249,6 +252,11 @@ get_parameters <- function(approach,
   # type
   if (!(type %in% c("regular", "forecast"))) {
     cli::cli_abort("`type` must be either `regular` or `forecast`.")
+  }
+
+  # model_class, test if single character
+  if (!(is.character(model_class) && length(model_class) == 1)) {
+    cli::cli_abort("`model_class` must be a single character string.")
   }
 
   # parameters only used for type "forecast"
@@ -323,11 +331,16 @@ get_parameters <- function(approach,
     asymmetric = asymmetric,
     causal_ordering = causal_ordering,
     confounding = confounding,
+    model_class = model_class,
     testing = testing
   )
 
   # Additional forecast-specific arguments, only added for type="forecast"
   if (type == "forecast") {
+    # Transform to integer for nice printout later on
+    horizon <- as.integer(horizon)
+    explain_idx <- as.integer(explain_idx)
+
     output_labels <-
       cbind(rep(explain_idx, horizon), rep(seq_len(horizon), each = length(explain_idx)))
     colnames(output_labels) <- c("explain_idx", "horizon")
@@ -389,10 +402,10 @@ get_data <- function(x_train, x_explain) {
 
   # Check column names
   if (all(is.null(colnames(x_train)))) {
-    stop_message <- c(stop_message, "x_train misses column names.\n")
+    stop_message <- c(stop_message, "x_train is missing column names.\n")
   }
   if (all(is.null(colnames(x_explain)))) {
-    stop_message <- c(stop_message, "x_explain misses column names.\n")
+    stop_message <- c(stop_message, "x_explain is missing column names.\n")
   }
   if (!is.null(stop_message)) {
     names(stop_message) <- rep("!", length(stop_message))
@@ -409,7 +422,7 @@ get_data <- function(x_train, x_explain) {
 
 #' @keywords internal
 check_data <- function(internal) {
-  # Check model and data compatability
+  # Check model and data compatibility
   verbose <- internal$parameters$verbose
 
   x_train <- internal$data$x_train
@@ -432,15 +445,15 @@ check_data <- function(internal) {
         "You passed a model to {.fn shapr::explain} which is not natively supported, and did not supply a ",
         "`get_model_specs` function to {.fn shapr::explain}."
       )
-      msg2 <- "Consistency checks between model and data is therefore disabled."
+      msg2 <- "Consistency checks between model and data are therefore disabled."
       cli::cli_inform(c("i" = msg1, " " = msg2))
     }
 
     model_feature_specs <- x_train_feature_specs
   } else if (NA_labels) {
     if ("basic" %in% verbose) {
-      msg1 <- "Feature names extracted from the model contains `NA`."
-      msg2 <- "Consistency checks between model and data is therefore disabled."
+      msg1 <- "Feature names extracted from the model contain `NA`."
+      msg2 <- "Consistency checks between model and data are therefore disabled."
 
       cli::cli_inform(c("i" = msg1, " " = msg2))
     }
@@ -448,7 +461,7 @@ check_data <- function(internal) {
     model_feature_specs <- x_train_feature_specs
   } else if (NA_classes) {
     if ("basic" %in% verbose) {
-      msg1 <- "Feature classes extracted from the model contains `NA`."
+      msg1 <- "Feature classes extracted from the model contain `NA`."
       msg2 <- "Assuming feature classes from the data are correct."
       cli::cli_inform(c("i" = msg1, " " = msg2))
     }
@@ -457,7 +470,7 @@ check_data <- function(internal) {
     model_feature_specs$factor_levels <- x_train_feature_specs$factor_levels
   } else if (factors_exists && NA_factor_levels) {
     if ("basic" %in% verbose) {
-      msg1 <- "Feature factor levels extracted from the model contains `NA`."
+      msg1 <- "Feature factor levels extracted from the model contain `NA`."
       msg2 <- "Assuming feature factor levels from the data are correct."
       cli::cli_inform(c("i" = msg1, " " = msg2))
     }
@@ -524,7 +537,7 @@ get_extra_parameters <- function(internal, type) {
   # Names of features (already checked to be OK)
   internal$parameters$feature_names <- names(internal$data$x_explain)
 
-  # Update feature_specss (in case model based spec included NAs)
+  # Update feature_specs (in case model-based specs included NAs)
   internal$objects$feature_specs <- get_data_specs(internal$data$x_explain)
 
   internal$parameters$is_groupwise <- !is.null(internal$parameters$group)
@@ -639,7 +652,7 @@ check_and_set_parameters <- function(internal, type) {
       internal$objects$dt_valid_causal_coalitions[, .N, by = .(coalition_size)][-c(1, .N), N]
   } else {
     # Do not set it for forecast, as it is generated on the fly as the value of changes with the horizon
-    if (type != "forecast") internal$parameters$n_coal_each_size <- as.integer(choose(m, seq(m - 1)))
+    if (type != "forecast") internal$parameters$n_coal_each_size <- choose(m, seq(m - 1))
   }
 
   # Adjust max_n_coalitions
@@ -720,7 +733,7 @@ check_and_set_causal_ordering <- function(internal) {
   internal$parameters$causal_ordering <- causal_ordering
   internal$parameters$causal_ordering_names <- causal_ordering_names
   internal$parameters$causal_ordering_names_string <-
-    paste0("{", paste(sapply(causal_ordering_names, paste, collapse = ", "), collapse = "}, {"), "}")
+    paste0("{{", paste(sapply(causal_ordering_names, paste, collapse = ", "), collapse = "}}, {{"), "}}")
 
   return(internal)
 }
@@ -752,7 +765,7 @@ check_and_set_confounding <- function(internal) {
     internal$parameters$confounding_string <- "No component with confounding"
   } else {
     internal$parameters$confounding_string <-
-      paste0("{", paste(sapply(causal_ordering_names[confounding], paste, collapse = ", "), collapse = "}, {"), "}")
+      paste0("{{", paste(sapply(causal_ordering_names[confounding], paste, collapse = ", "), collapse = "}}, {{"), "}}")
   }
 
   return(internal)
@@ -841,8 +854,8 @@ adjust_max_n_coalitions <- function(internal) {
       max_n_coalitions <- max_n_coalitions_causal
       if ("basic" %in% verbose) {
         msg <- paste0(
-          "`max_n_coalitions` is `NULL` or larger than or number of coalitions respecting the causal ",
-          "ordering ", max_n_coalitions_causal, ", and is therefore set to ", max_n_coalitions_causal, "."
+          "`max_n_coalitions` is `NULL` or larger than the number of coalitions respecting the causal ",
+          "ordering (", max_n_coalitions_causal, "), and is therefore set to ", max_n_coalitions_causal, "."
         )
         cli::cli_inform(c("i" = msg))
       }
@@ -877,13 +890,13 @@ adjust_max_n_coalitions <- function(internal) {
   } else {
     # Symmetric/regular Shapley values
 
-    if (isFALSE(is_groupwise)) { # feature wise
+    if (isFALSE(is_groupwise)) { # feature-wise
       # Set max_n_coalitions to upper bound
       if (is.null(max_n_coalitions) || max_n_coalitions > 2^n_features) {
         max_n_coalitions <- 2^n_features
         if ("basic" %in% verbose) {
           msg <- paste0(
-            "`max_n_coalitions` is `NULL` or larger than or `2^n_features = ", 2^n_features, "`, ",
+            "`max_n_coalitions` is `NULL` or larger than `2^n_features = ", 2^n_features, "`, ",
             "and is therefore set to `2^n_features = ", 2^n_features, "`."
           )
           cli::cli_inform(c("i" = msg))
@@ -908,18 +921,18 @@ adjust_max_n_coalitions <- function(internal) {
               "`max_n_coalitions` is smaller than `max(10, n_features + 1 = ", n_features + 1, ")`, ",
               "which will result in unreliable results."
             )
-            msg2 <- paste0("It is therefore set to ", max(10, n_features + 1), ".")
+            msg2 <- paste0("It is therefore set to ", min(10, n_features + 1), ".")
             cli::cli_inform(c("i" = msg1, " " = msg2))
           }
         }
       }
-    } else { # group wise
+    } else { # group-wise
       # Set max_n_coalitions to upper bound
       if (is.null(max_n_coalitions) || max_n_coalitions > 2^n_shapley_values) {
         max_n_coalitions <- 2^n_shapley_values
         if ("basic" %in% verbose) {
           msg <- paste0(
-            "`max_n_coalitions` is `NULL` or larger than or `2^n_groups = ", 2^n_shapley_values, "`, ",
+            "`max_n_coalitions` is `NULL` or larger than `2^n_groups = ", 2^n_shapley_values, "`, ",
             "and is therefore set to `2^n_groups = ", 2^n_shapley_values, "`."
           )
           cli::cli_inform(c("i" = msg))
@@ -944,7 +957,7 @@ adjust_max_n_coalitions <- function(internal) {
               "`max_n_coalitions` is smaller than `max(10, n_groups + 1 = ", n_shapley_values + 1, ")`,",
               " which will result in unreliable results."
             )
-            msg2 <- paste0("It is therefore set to ", max(10, n_shapley_values + 1), ".")
+            msg2 <- paste0("It is therefore set to ", min(10, n_shapley_values + 1), ".")
             cli::cli_inform(c("i" = msg1, " " = msg2))
           }
         }
@@ -1012,7 +1025,7 @@ set_output_parameters <- function(internal) {
 #' Gets the default values for the output arguments
 #'
 #' @param keep_samp_for_vS Logical.
-#' Indicates whether the samples used in the Monte Carlo estimation of v_S should be returned (in `internal$output`).
+#' Indicates whether the samples used in the Monte Carlo estimation of `v(S)` should be returned (in `internal$output`).
 #' Not used for `approach="regression_separate"` or `approach="regression_surrogate"`.
 #' @param MSEv_uniform_comb_weights Logical.
 #' If `TRUE` (default), then the function weights the coalitions uniformly when computing the MSEv criterion.
@@ -1041,12 +1054,12 @@ check_output_args <- function(output_args) {
   # keep_samp_for_vS
   if (!(is.logical(keep_samp_for_vS) &&
     length(keep_samp_for_vS) == 1)) {
-    cli::cli_abort("`output_args$keep_samp_for_vS` must be single logical.")
+    cli::cli_abort("`output_args$keep_samp_for_vS` must be a single logical.")
   }
 
   # Parameter used in the MSEv evaluation criterion
   if (!(is.logical(MSEv_uniform_comb_weights) && length(MSEv_uniform_comb_weights) == 1)) {
-    cli::cli_abort("`output_args$MSEv_uniform_comb_weights` must be single logical.")
+    cli::cli_abort("`output_args$MSEv_uniform_comb_weights` must be a single logical.")
   }
 
   # saving_path
@@ -1059,7 +1072,7 @@ check_output_args <- function(output_args) {
   if (!dir.exists(dirname(saving_path))) {
     cli::cli_abort(
       paste0(
-        "Directory ", dirname(saving_path), " in the output_args$saving_path does not exists.\n",
+        "Directory ", dirname(saving_path), " in `output_args$saving_path` does not exist.\n",
         "Please create the directory with `dir.create('", dirname(saving_path), "')` or use another directory."
       )
     )
@@ -1115,7 +1128,7 @@ check_and_set_sampling_info <- function(internal) {
     }
 
     if (type != "regular") {
-      cli::cli_abort("`semi_deterministic_sampling` is not suppored for explain_forecast().")
+      cli::cli_abort("`semi_deterministic_sampling` is not supported for explain_forecast().")
     }
 
     if (asymmetric) {
@@ -1169,12 +1182,12 @@ check_and_set_sampling_info <- function(internal) {
 #' @param vS_batching_method String. The method used to perform batch computing of vS.
 #' `"future"` (default), utilizes [future.apply::future_apply] (via the [future::future] package),
 #' enabling parallelized computation and progress updates via [progressr::progressr].
-#' Alternatively, `"forloop"` can be used for straight forward sequential computation, which is mainly useful for
+#' Alternatively, `"forloop"` can be used for straightforward sequential computation, which is mainly useful for
 #' package development and debugging purposes.
 #' @param max_batch_size Integer. The maximum number of coalitions to estimate simultaneously within each iteration.
-#' A larger numbers requires more memory, but may have a slight computational advantage.
+#' A larger number requires more memory, but may have a slight computational advantage.
 #' @param min_n_batches Integer. The minimum number of batches to split the computation into within each iteration.
-#' Larger numbers gives more frequent progress updates. If parallelization is applied, this should be set no smaller
+#' Larger numbers give more frequent progress updates. If parallelization is applied, this should be set no smaller
 #' than the number of parallel workers.
 #' @inheritParams default_doc_export
 #' @export
@@ -1221,7 +1234,7 @@ check_extra_computation_args <- function(extra_computation_args) {
   # compute_sd
   if (!(is.logical(compute_sd) &&
     length(compute_sd) == 1)) {
-    cli::cli_abort("`extra_computation_args$compute_sd` must be single logical.")
+    cli::cli_abort("`extra_computation_args$compute_sd` must be a single logical.")
   }
 
   # vS_batching_method
@@ -1403,14 +1416,14 @@ check_computability <- function(internal) {
 #' @keywords internal
 check_groups <- function(feature_names, group) {
   if (!is.list(group)) {
-    cli::cli_abort("group must be a list")
+    cli::cli_abort("{.arg group} must be a list.")
   }
 
   group_features <- unlist(group)
 
   # Checking that the group_features are characters
   if (!all(is.character(group_features))) {
-    cli::cli_abort("All components of group should be a character.")
+    cli::cli_abort("All components of {.arg group} should be of type character.")
   }
 
   # Check that all features in group are in feature labels or used by model
@@ -1543,7 +1556,7 @@ compare_vecs <- function(vec1, vec2, vec_type, name1, name2) {
     if (is.null(names(vec2))) {
       text_vec2 <- paste(vec2, collapse = ", ")
     } else {
-      text_vec2 <- paste(names(vec2), vec1, sep = ": ", collapse = ", ")
+      text_vec2 <- paste(names(vec2), vec2, sep = ": ", collapse = ", ")
     }
 
     msg1 <- paste0("Feature ", vec_type, " are not identical for ", name1, " and ", name2, ". ")
@@ -1583,6 +1596,7 @@ set_iterative_parameters <- function(internal, prev_iter_list = NULL) {
   # Update exact if initial_n_coalitions was set to be equal to or larger than n_shapley_values^2
   if (iterative_args$initial_n_coalitions >= internal$parameters$n_shapley_values^2) {
     internal$parameters$exact <- TRUE
+    internal$parameters$extra_computation_args$compute_sd <- FALSE
   }
 
   check_iterative_args(iterative_args)
@@ -1677,7 +1691,7 @@ check_iterative_args <- function(iterative_args) {
     !(all(!is.na(n_coal_next_iter_factor_vec)) &&
       all(n_coal_next_iter_factor_vec <= 1) &&
       all(n_coal_next_iter_factor_vec >= 0))) {
-    cli::cli_abort("`iterative_args$n_coal_next_iter_factor_vec` must be NULL or a vector or numerics between 0 and 1.")
+    cli::cli_abort("`iterative_args$n_coal_next_iter_factor_vec` must be NULL or a vector of numerics between 0 and 1.")
   }
 }
 

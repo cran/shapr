@@ -21,7 +21,7 @@
 #' @param n_features Positive integer.
 #' The number of features.
 #'
-#' @param W_kernel Numeric matrix. Contains all nonscaled weights between training and test
+#' @param W_kernel Numeric matrix. Contains all non-scaled weights between training and test
 #' observations for all coalitions. The dimension equals `n_train x m`.
 #'
 #' @param S Integer matrix of dimension `n_coalitions x m`, where `n_coalitions`
@@ -32,6 +32,9 @@
 #' estimates. The first column is assumed to be named `id_coalition` and containing the ids of the coalitions.
 #' The last row is assumed to be the full coalition, i.e., it contains the predicted responses for the observations
 #' which are to be explained.
+#'
+#' @param model_class Character string.
+#' The class of the model object, e.g., "lm", "glm", "xgboost", etc. obtained by `class(model)[1]`.
 #'
 #' @param output_size Scalar integer.
 #' Specifies the dimension of the output from the prediction model for every observation.
@@ -52,6 +55,7 @@ default_doc_internal <- function(internal,
                                  W_kernel,
                                  S,
                                  dt_vS,
+                                 model_class,
                                  output_size,
                                  ...) {
   NULL
@@ -69,7 +73,14 @@ default_doc_internal <- function(internal,
 #' @param index_features Positive integer vector. Specifies the id_coalition to
 #' apply to the present method. `NULL` means all coalitions. Only used internally.
 #'
+#' @param digits Integer.
+#' (Maximum) number of digits to be displayed after the decimal point.
+#' Defaults to 2.
+#'
 #' @keywords internal
-default_doc_export <- function(internal, iter, index_features) {
+default_doc_export <- function(internal,
+                               iter,
+                               index_features,
+                               digits) {
   NULL
 }

@@ -1,3 +1,27 @@
+# shapr 1.0.5
+
+### New features
+* Added `get_results()` for extracting key components from a `shapr` object, including Shapley values, 
+  model parameters, and iterative computation details ([#460](https://github.com/NorskRegnesentral/shapr/pull/460)).
+* Added `summary.shapr()` method, which builds on `get_results()` and internal `format_xyz()` functions to provide a concise
+  overview of explanation objects ([#460](https://github.com/NorskRegnesentral/shapr/pull/460)).
+
+### Improvements
+* Enhanced `print.shapr()` to support printing of specific components, with customizable control over digits and 
+  decimal precision ([#460](https://github.com/NorskRegnesentral/shapr/pull/460)).
+* Refactored `cli`-based output functions for improved reuse across multiple methods ([#460](https://github.com/NorskRegnesentral/shapr/pull/460)).
+* Updated vignettes, examples, and tests to reflect the new functionality ([#460](https://github.com/NorskRegnesentral/shapr/pull/460)).
+* Fixed spelling, grammar, and other textual inconsistencies in documentation, comments, and vignettes 
+  ([#465](https://github.com/NorskRegnesentral/shapr/pull/465)).
+* Applied various minor visual improvements ([#460](https://github.com/NorskRegnesentral/shapr/pull/460), 
+  [#464](https://github.com/NorskRegnesentral/shapr/pull/464)).
+
+### Bug fixes
+* Fixed error when handling many features by removing `as.integer()` coercion in the computation of coalitions per 
+  coalition size ([#462](https://github.com/NorskRegnesentral/shapr/pull/462)).
+
+
+
 # shapr 1.0.4
 
 * Implement semi-deterministic sampling of coalitions similar to the default in the *shap* python library and described

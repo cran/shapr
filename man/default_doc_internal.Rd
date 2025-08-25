@@ -14,6 +14,7 @@ default_doc_internal(
   W_kernel,
   S,
   dt_vS,
+  model_class,
   output_size,
   ...
 )
@@ -40,7 +41,7 @@ predictions ought to be explained (test data).}
 \item{n_features}{Positive integer.
 The number of features.}
 
-\item{W_kernel}{Numeric matrix. Contains all nonscaled weights between training and test
+\item{W_kernel}{Numeric matrix. Contains all non-scaled weights between training and test
 observations for all coalitions. The dimension equals \verb{n_train x m}.}
 
 \item{S}{Integer matrix of dimension \verb{n_coalitions x m}, where \code{n_coalitions}
@@ -51,6 +52,9 @@ the total number of unique features, respectively. Note that \code{m = ncol(x_tr
 estimates. The first column is assumed to be named \code{id_coalition} and containing the ids of the coalitions.
 The last row is assumed to be the full coalition, i.e., it contains the predicted responses for the observations
 which are to be explained.}
+
+\item{model_class}{Character string.
+The class of the model object, e.g., "lm", "glm", "xgboost", etc. obtained by \code{class(model)[1]}.}
 
 \item{output_size}{Scalar integer.
 Specifies the dimension of the output from the prediction model for every observation.}
