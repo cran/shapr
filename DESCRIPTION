@@ -1,5 +1,5 @@
 Package: shapr
-Version: 1.0.7
+Version: 1.0.8
 Title: Prediction Explanation with Dependence-Aware Shapley Values
 Description: Complex machine learning models are often hard to interpret. However, in
   many situations it is crucial to understand and explain why a model made a specific
@@ -39,7 +39,7 @@ LinkingTo: RcppArmadillo, Rcpp
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: yes
-Packaged: 2025-12-21 00:29:02 UTC; jullum
+Packaged: 2026-01-20 21:31:54 UTC; jullum
 Author: Martin Jullum [cre, aut] (ORCID:
     <https://orcid.org/0000-0003-3908-5155>),
   Lars Henry Berge Olsen [aut] (ORCID:
@@ -54,4 +54,4 @@ Author: Martin Jullum [cre, aut] (ORCID:
   Norsk Regnesentral [cph, fnd]
 Maintainer: Martin Jullum <Martin.Jullum@nr.no>
 Repository: CRAN
-Date/Publication: 2025-12-22 16:30:02 UTC
+Date/Publication: 2026-01-20 22:00:02 UTC
