@@ -36,6 +36,8 @@ setup(
   confounding = NULL,
   output_args = list(),
   extra_computation_args = list(),
+  scope = "local",
+  y_explain = NULL,
   model_class,
   ...
 )
@@ -49,8 +51,9 @@ needed to properly estimate the conditional expectations in the Shapley formula.
 Features for which predictions should be explained.}
 
 \item{approach}{Character vector of length \code{1} or one less than the number of features.
-All elements should either be \code{"gaussian"}, \code{"copula"}, \code{"empirical"}, \code{"ctree"}, \code{"vaeac"},
-\code{"categorical"}, \code{"timeseries"}, \code{"independence"}, \code{"regression_separate"}, or \code{"regression_surrogate"}.
+All elements should either be \code{"arf"}, \code{"categorical"}, \code{"copula"}, \code{"ctree"}, \code{"empirical"},
+\code{"gaussian"}, \code{"independence"}, \code{"regression_separate"}, \code{"regression_surrogate"}, \code{"timeseries"}, or
+\code{"vaeac"}.
 The two regression approaches cannot be combined with any other approach.
 See details for more information.}
 
@@ -169,7 +172,7 @@ See the help file of \code{\link[=get_iterative_args_default]{get_iterative_args
 Indicates whether the function is called from the Python wrapper.
 Default is FALSE, which is never changed when calling the function via \code{explain()} in R.
 The parameter is later used to disallow running the AICc versions of the empirical method,
-as that requires data-based optimization, which is not supported in \code{shaprpy}.}
+as that requires data-based optimization, which is not supported in \code{pyshapr}.}
 
 \item{testing}{Logical.
 Only used to remove random components, like timing, from the output when comparing with testthat.
@@ -232,6 +235,20 @@ See the help file of \code{\link[=get_output_args_default]{get_output_args_defau
 \item{extra_computation_args}{Named list.
 Specifies extra arguments related to the computation of the Shapley values.
 See the help file of \code{\link[=get_extra_comp_args_default]{get_extra_comp_args_default()}} for description of the arguments and their default values.}
+
+\item{scope}{String.
+Either \code{"local"} (default) or \code{"global"}.
+If \code{"local"}, \code{explain} computes standard (local) Shapley values that explain individual predictions, i.e.
+SHAP (Shapley Additive exPlanations)-style explanations.
+If \code{"global"}, \code{explain} instead computes SAGE values (Shapley Additive Global importancE), which explain the
+global model loss over the observations in \code{x_explain} rather than individual predictions.
+See the details section and \code{vignette("general_usage", package = "shapr")} for more information.}
+
+\item{y_explain}{Numeric vector.
+Only used (and required) when \code{scope = "global"}.
+The true response/outcome values corresponding to the observations in \code{x_explain}, used to evaluate the model loss
+when computing the SAGE values.
+Must be numeric and have the same number of elements as there are rows in \code{x_explain}.}
 
 \item{model_class}{Character string.
 The class of the model object, e.g., "lm", "glm", "xgboost", etc. obtained by \code{class(model)[1]}.}

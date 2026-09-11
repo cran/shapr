@@ -1,5 +1,5 @@
 Package: shapr
-Version: 1.0.8
+Version: 1.1.0
 Title: Prediction Explanation with Dependence-Aware Shapley Values
 Description: Complex machine learning models are often hard to interpret. However, in
   many situations it is crucial to understand and explain why a model made a specific
@@ -7,7 +7,7 @@ Description: Complex machine learning models are often hard to interpret. Howeve
   with a solid theoretical foundation. Previously known methods for estimating the Shapley
   values do, however, assume feature independence. This package implements methods which accounts for any feature
   dependence, and thereby produces more accurate estimates of the true Shapley values.
-  An accompanying 'Python' wrapper ('shaprpy') is available through PyPI.
+  An accompanying 'Python' wrapper ('pyshapr') is available through PyPI.
 Authors@R: c(
     person("Martin", "Jullum", email = "Martin.Jullum@nr.no", role = c("cre", "aut"), comment = c(ORCID = "0000-0003-3908-5155")),
     person("Lars Henry Berge", "Olsen", email = "lhbolsen@nr.no", role = "aut", comment = c(ORCID = "0009-0006-9360-6993")),
@@ -26,20 +26,21 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 ByteCompile: true
 Language: en-US
-RoxygenNote: 7.3.3
 Depends: R (>= 3.5.0)
 Imports: stats, data.table (>= 1.15.0), Rcpp (>= 0.12.15), Matrix,
-        future.apply, methods, cli, rlang
-Suggests: ranger, xgboost, mgcv, testthat (>= 3.0.0), knitr, rmarkdown,
-        roxygen2, ggplot2, gbm, party, partykit, waldo, progressr,
-        future, ggbeeswarm, vdiffr, forecast, torch, GGally, coro,
+        future, future.apply, methods, cli, rlang
+Suggests: arf, ranger, xgboost, mgcv, testthat (>= 3.0.0), knitr,
+        rmarkdown, roxygen2, ggplot2, gbm, party, partykit, waldo,
+        progressr, ggbeeswarm, vdiffr, forecast, torch, GGally, coro,
         parsnip, recipes, workflows, tune, dials, yardstick, hardhat,
         rsample
 LinkingTo: RcppArmadillo, Rcpp
 VignetteBuilder: knitr
+Config/Needs/website: DT
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0
 NeedsCompilation: yes
-Packaged: 2026-01-20 21:31:54 UTC; jullum
+Packaged: 2026-09-11 20:07:45 UTC; jullum
 Author: Martin Jullum [cre, aut] (ORCID:
     <https://orcid.org/0000-0003-3908-5155>),
   Lars Henry Berge Olsen [aut] (ORCID:
@@ -54,4 +55,4 @@ Author: Martin Jullum [cre, aut] (ORCID:
   Norsk Regnesentral [cph, fnd]
 Maintainer: Martin Jullum <Martin.Jullum@nr.no>
 Repository: CRAN
-Date/Publication: 2026-01-20 22:00:02 UTC
+Date/Publication: 2026-09-11 21:00:02 UTC

@@ -68,8 +68,9 @@ If \code{xreg != NULL}, denotes the number of lags that should be used for each 
 The forecast horizon to explain. Passed to the \code{predict_model} function.}
 
 \item{approach}{Character vector of length \code{1} or one less than the number of features.
-All elements should either be \code{"gaussian"}, \code{"copula"}, \code{"empirical"}, \code{"ctree"}, \code{"vaeac"},
-\code{"categorical"}, \code{"timeseries"}, \code{"independence"}, \code{"regression_separate"}, or \code{"regression_surrogate"}.
+All elements should either be \code{"arf"}, \code{"categorical"}, \code{"copula"}, \code{"ctree"}, \code{"empirical"},
+\code{"gaussian"}, \code{"independence"}, \code{"regression_separate"}, \code{"regression_surrogate"}, \code{"timeseries"}, or
+\code{"vaeac"}.
 The two regression approaches cannot be combined with any other approach.
 See details for more information.}
 
@@ -171,8 +172,31 @@ Specifies certain arguments related to the output of the function.
 See the help file of \code{\link[=get_output_args_default]{get_output_args_default()}} for description of the arguments and their default values.}
 
 \item{...}{
-  Arguments passed on to \code{\link[=setup_approach.categorical]{setup_approach.categorical}}, \code{\link[=setup_approach.copula]{setup_approach.copula}}, \code{\link[=setup_approach.ctree]{setup_approach.ctree}}, \code{\link[=setup_approach.empirical]{setup_approach.empirical}}, \code{\link[=setup_approach.gaussian]{setup_approach.gaussian}}, \code{\link[=setup_approach.independence]{setup_approach.independence}}, \code{\link[=setup_approach.timeseries]{setup_approach.timeseries}}, \code{\link[=setup_approach.vaeac]{setup_approach.vaeac}}
+  Arguments passed on to \code{\link{setup_approach}}
   \describe{
+    \item{\code{arf.num_trees}}{Positive integer.
+The number of trees in the adversarial random forest.}
+    \item{\code{arf.min_node_size}}{Positive integer.
+The minimum number of observations in each terminal node.}
+    \item{\code{arf.delta}}{Non-negative numeric scalar.
+Tuning parameter passed to \code{\link[arf:adversarial_rf]{arf::adversarial_rf()}}.}
+    \item{\code{arf.max_iters}}{Positive integer.
+The maximum number of adversarial forest iterations.}
+    \item{\code{arf.alpha}}{Numeric scalar between 0 and 1.
+Tuning parameter passed to \code{\link[arf:forde]{arf::forde()}}.}
+    \item{\code{arf.epsilon}}{Positive numeric scalar.
+Small regularization constant passed to \code{\link[arf:forde]{arf::forde()}}.}
+    \item{\code{arf.parallel_train}}{Logical scalar.
+If \code{TRUE}, \code{\link[arf:adversarial_rf]{arf::adversarial_rf()}} and \code{\link[arf:forde]{arf::forde()}} use parallel processing
+when training the feature distribution.
+The training step uses \code{ranger} threads, controlled by \code{options(ranger.num.threads = n)}
+or the \code{R_RANGER_NUM_THREADS} environment variable. The \code{\link[arf:forde]{arf::forde()}} step uses
+\code{foreach} and only runs in parallel when a \code{foreach} backend is registered.}
+    \item{\code{arf.parallel_gen}}{Logical scalar.
+If \code{TRUE}, \code{\link[arf:forge]{arf::forge()}} uses \code{foreach} parallel processing when generating
+samples for the Monte Carlo integration used to estimate \code{v(S)}.
+This can be faster for ARF-heavy explanations, but is best combined with sequential
+shapr batching, for example \code{extra_computation_args = list(vS_batching_method = "forloop", min_n_batches = 1, max_batch_size = Inf)}, to avoid nested parallelization with \code{future}.}
     \item{\code{categorical.joint_prob_dt}}{Data.table. (Optional)
 Containing the joint probability distribution for each combination of feature
 values.
@@ -182,8 +206,6 @@ If \code{categorical.joint_prob_dt} is not supplied, probabilities/frequencies a
 estimated using \code{x_train}. If certain observations occur in \code{x_explain} and NOT in \code{x_train},
 then epsilon is used as the proportion of times that these observations occur in the training data.
 In theory, this proportion should be zero, but this causes an error later in the Shapley computation.}
-    \item{\code{internal}}{List.
-Not used directly, but passed through from \code{\link[=explain]{explain()}}.}
     \item{\code{ctree.mincriterion}}{Numeric scalar or vector.
 Either a scalar or vector of length equal to the number of features in the model.
 The value is equal to 1 - \eqn{\alpha} where \eqn{\alpha} is the nominal level of the conditional independence tests.
@@ -273,11 +295,14 @@ Object of class \code{c("shapr", "list")}. Contains the following items:
 \describe{
 \item{\code{shapley_values_est}}{data.table with the estimated Shapley values with explained observation in the rows and
 features along the columns.
-The column \code{none} is the prediction not devoted to any of the features (given by the argument \code{phi0})}
+The column \code{none} is the prediction not devoted to any of the features (given by the argument \code{phi0}).
+If \code{scope = "global"}, this instead contains a single row with the estimated SAGE values, and the column \code{none}
+gives the baseline model loss \code{-loss(y_explain, phi0)}.}
 \item{\code{shapley_values_sd}}{data.table with the standard deviation of the Shapley values reflecting the uncertainty
 in the coalition sampling part of the kernelSHAP procedure.
 These are, by definition, 0 when all coalitions are used.
-Only present when \code{extra_computation_args$compute_sd=TRUE}, which is the default when \code{iterative = TRUE}.}
+Only present when \code{extra_computation_args$compute_sd=TRUE}, which is the default when \code{iterative = TRUE}.
+If \code{scope = "global"}, this contains a single row with the standard deviations of the SAGE values.}
 \item{\code{internal}}{List with the different parameters, data, functions and other output used internally.}
 \item{\code{pred_explain}}{Numeric vector with the predictions for the explained observations.}
 \item{\code{MSEv}}{List with the values of the MSEv evaluation criterion for the approach. See the

@@ -118,6 +118,11 @@ setup_approach.empirical <- function(internal,
     predict_model = predict_model
   )
 
+  # Limit the per-batch distance array size (uses more batches in high dimensions, see cap_dense_batch_size).
+  # The empirical distance cube built in mahalanobis_distance_cpp has size n_train * n_explain * coalitions_per_batch.
+  per_coalition_size <- as.numeric(internal$parameters$n_train) * internal$parameters$n_explain
+  internal <- cap_dense_batch_size(internal, per_coalition_size)
+
   return(internal)
 }
 
@@ -197,7 +202,7 @@ prepare_data.empirical <- function(internal, index_features = NULL, ...) {
       empirical.eta <- 1
       if ("basic" %in% verbose) {
         msg <- "Setting `empirical.eta` to 1 because `empirical.type = 'independence'`."
-        cli::cli_inform(c("i" = msg))
+        cli::cli_bullets(c("i" = msg))
       }
     } else if (kernel_metric == "gaussian") {
       if (empirical.type == "fixed_sigma") {

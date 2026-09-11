@@ -14,6 +14,8 @@
 #'  `"beeswarm"` summarizes the distribution of the Shapley values along the x-axis for all the features.
 #'  Each point gives the Shapley value of a given instance, where the points are colored by the feature value
 #'  of that instance.
+#'  For SAGE values (`scope = "global"` in [explain()]), only `"bar"` and `"waterfall"` are supported, as SAGE
+#'  produces a single global loss-based explanation rather than per-observation prediction explanations.
 #' @param digits Integer.
 #' Number of significant digits to use in the feature description.
 #' Applicable for `plot_type` `"bar"` and `"waterfall"`
@@ -218,10 +220,22 @@ plot.shapr <- function(x,
                bar_plot_order='smallest_first' or bar_plot_order='original'."))
   }
 
+  # SAGE values are global loss explanations, for which only `bar` and `waterfall` plots make sense
+  is_global <- isTRUE(x$internal$parameters$scope == "global")
+  if (is_global && !plot_type %in% c("bar", "waterfall")) {
+    cli::cli_abort(paste0(
+      plot_type, " is an invalid plot type for SAGE values. Try plot_type='bar' or plot_type='waterfall'."
+    ))
+  }
+
   # Remove the explain_id column
   x$shapley_values_est <- x$shapley_values_est[, -"explain_id"]
 
   # Set default index_x_explain based on plot type
+  if (is.null(index_x_explain) && is_global) {
+    # SAGE produces a single global explanation, so there is only one "observation" to plot
+    index_x_explain <- 1L
+  }
   if (is.null(index_x_explain)) {
     n_explain <- x$internal$parameters$n_explain
     if (plot_type %in% c("bar", "waterfall")) {
@@ -237,7 +251,7 @@ plot.shapr <- function(x,
         msg2 <- paste0(
           "Adjust this via the 'index_x_explain' argument if you want to plot different observations."
         )
-        cli::cli_inform(c("i" = msg1, " " = msg2))
+        cli::cli_bullets(c("i" = msg1, " " = msg2))
       }
     } else {
       # For scatter and beeswarm, plot all observations
@@ -293,7 +307,8 @@ plot.shapr <- function(x,
   dt_shap_long[, sign := factor(sign(phi), levels = c(1, -1), labels = c("Increases", "Decreases"))]
 
   # Converting and melting x_explain
-  if (!is_groupwise || include_group_feature_means) {
+  # For SAGE there is no single observation to describe, so we only show the feature names (no values)
+  if ((!is_groupwise || include_group_feature_means) && !is_global) {
     desc_mat <- trimws(format(x$internal$data$x_explain, digits = digits))
     for (i in seq_len(ncol(desc_mat))) {
       desc_mat[, i] <- paste0(shap_names[i], " = ", desc_mat[, i])
@@ -311,12 +326,18 @@ plot.shapr <- function(x,
   # Data table for plotting
   dt_plot <- merge(dt_shap_long, dt_desc_long)
 
-  # Adding the predictions
-  dt_pred <- data.table::data.table(id = dt_shap$id, pred = x$pred_explain)
-  dt_plot <- merge(dt_plot, dt_pred, by = "id")
+  if (!is_global) {
+    # Adding the predictions
+    dt_pred <- data.table::data.table(id = dt_shap$id, pred = x$pred_explain)
+    dt_plot <- merge(dt_plot, dt_pred, by = "id")
 
-  # Adding header for each individual plot
-  dt_plot[, header := paste0("id: ", id, ", pred = ", format(pred, digits = digits + 1))]
+    # Adding header for each individual plot
+    dt_plot[, header := paste0("id: ", id, ", pred = ", format(pred, digits = digits + 1))]
+  } else {
+    # SAGE has no per-observation prediction; use an empty header and never show phi0 as a bar
+    dt_plot[, header := ""]
+    bar_plot_phi0 <- FALSE
+  }
 
   if (plot_type == "scatter" || plot_type == "beeswarm") {
     # Add feature values to data table
@@ -368,7 +389,7 @@ plot.shapr <- function(x,
     # compute start and end values for waterfall rectangles
     data.table::setorder(dt_plot, rank_waterfall)
     dt_plot[, end := cumsum(phi), by = id]
-    expected <- x$internal$parameters$phi0
+    expected <- if (is_global) x$internal$parameters$zero_loss else x$internal$parameters$phi0
     dt_plot[, start := c(expected, head(end, -1)), by = id]
     dt_plot[, phi_significant := format(phi, digits = digits), by = id]
 
@@ -394,9 +415,9 @@ plot.shapr <- function(x,
     breaks <- levels(droplevels(dt_plot[, unique_label])) # removes -1 if no rest and 0 if no none in plot
 
     if (plot_type == "bar") {
-      gg <- make_bar_plot(dt_plot, bar_plot_phi0, col, breaks, desc_labels)
+      gg <- make_bar_plot(dt_plot, bar_plot_phi0, col, breaks, desc_labels, is_global)
     } else if (plot_type == "waterfall") {
-      gg <- make_waterfall_plot(dt_plot, expected, col, digits, bar_plot_order, breaks, desc_labels)
+      gg <- make_waterfall_plot(dt_plot, expected, col, digits, bar_plot_order, breaks, desc_labels, is_global)
     }
   }
 
@@ -722,7 +743,7 @@ make_beeswarm_plot <- function(dt_plot,
   return(gg)
 }
 
-make_bar_plot <- function(dt_plot, bar_plot_phi0, col, breaks, desc_labels) {
+make_bar_plot <- function(dt_plot, bar_plot_phi0, col, breaks, desc_labels, sage = FALSE) {
   if (is.null(col)) {
     col <- c("#00BA38", "#F8766D")
   }
@@ -730,6 +751,7 @@ make_bar_plot <- function(dt_plot, bar_plot_phi0, col, breaks, desc_labels) {
     cli::cli_abort("'col' must be of length 2 when making bar plot.")
   }
 
+  plot_title <- if (sage) "Shapley value global loss explanation" else "Shapley value prediction explanation"
 
   if (!(bar_plot_phi0)) {
     dt_plot <- dt_plot[variable != "none", ]
@@ -770,7 +792,7 @@ make_bar_plot <- function(dt_plot, bar_plot_phi0, col, breaks, desc_labels) {
       y = "Feature contribution",
       x = "Feature",
       fill = "",
-      title = "Shapley value prediction explanation"
+      title = plot_title
     ) +
     ggplot2::geom_text(
       ggplot2::aes(
@@ -790,12 +812,23 @@ make_waterfall_plot <- function(dt_plot,
                                 digits,
                                 bar_plot_order,
                                 breaks,
-                                desc_labels) {
+                                desc_labels,
+                                sage = FALSE) {
   if (is.null(col)) {
     col <- c("#00BA38", "#F8766D")
   }
   if (length(col) != 2) {
     cli::cli_abort("'col' must be of length 2 when making waterfall plot.")
+  }
+
+  if (sage) {
+    plot_title <- "Shapley value global loss explanation"
+    y_axis_label <- "Loss"
+    # SAGE has no per-observation prediction, so reconstruct the total loss from the SAGE values
+    dt_plot[, pred := expected + sum(phi), by = id]
+  } else {
+    plot_title <- "Shapley value prediction explanation"
+    y_axis_label <- "Prediction"
   }
 
   # waterfall plotting helpers
@@ -834,9 +867,14 @@ make_waterfall_plot <- function(dt_plot,
   dt_plot[, arrow_color := ifelse(sign == "Increasing", col[1], col[2])]
   N_features <- max(dt_plot[, rank_waterfall])
   n_obs <- length(dt_plot[, unique(id)])
-  dt_plot[, pred_label := paste0("italic(f(x)) == ", format(pred, digits = digits + 1))]
+  if (sage) {
+    dt_plot[, pred_label := paste0("italic(L(f)) == ", format(pred, digits = digits + 1))]
+    dt_plot[, phi0_label := paste0("italic(L(phi[0])) == ", format(expected, digits = digits + 1))]
+  } else {
+    dt_plot[, pred_label := paste0("italic(f(x)) == ", format(pred, digits = digits + 1))]
+    dt_plot[, phi0_label := paste0("~phi[0]==", format(expected, digits = digits + 1))]
+  }
   dt_plot[, pred_x := N_features + 0.8]
-  dt_plot[, phi0_label := paste0("~phi[0]==", format(expected, digits = digits + 1))]
   dt_plot[, phi0_x := 0]
 
   gg <- ggplot2::ggplot(dt_plot, ggplot2::aes(x = unique_label, fill = sign)) +
@@ -857,10 +895,10 @@ make_waterfall_plot <- function(dt_plot,
       N_features + N_features * 0.11
     ))) +
     ggplot2::labs(
-      y = "Prediction",
+      y = y_axis_label,
       x = "Feature",
       fill = "",
-      title = "Shapley value prediction explanation"
+      title = plot_title
     ) +
     ggplot2::geom_rect(ggplot2::aes(xmin = rank_waterfall - 0.3, xmax = rank_waterfall + 0.3, ymin = end, ymax = start),
       show.legend = NA
@@ -1139,7 +1177,7 @@ plot_MSEv_eval_crit <- function(explanation_list,
   # Inform user if only a subset of observations is being plotted
   if (length(index_x_explain) < n_explain) {
     msg <- paste0("Showing ", length(index_x_explain), " of ", n_explain, " observations.")
-    cli::cli_inform(c("i" = msg))
+    cli::cli_bullets(c("i" = msg))
   }
 
   # Create data.tables of the MSEv values
@@ -1159,7 +1197,7 @@ plot_MSEv_eval_crit <- function(explanation_list,
         "The approximate ", CI_level * 100, "% confidence intervals might be wide as they are only based on ",
         n_explain, " observations."
       )
-      cli::cli_inform(c("i" = msg))
+      cli::cli_bullets(c("i" = msg))
     }
 
     # Check for CI with negative values
@@ -1174,7 +1212,7 @@ plot_MSEv_eval_crit <- function(explanation_list,
         "Check the `MSEv_explicand` plots for potential observational outliers ",
         "that causes the wide confidence intervals."
       )
-      cli::cli_inform(c("i" = msg1, " " = msg2))
+      cli::cli_bullets(c("i" = msg1, " " = msg2))
     }
   }
 
@@ -1243,7 +1281,7 @@ MSEv_name_explanation_list <- function(explanation_list) {
   msg1 <- "User provided an `explanation_list` without named explanation objects."
   msg2 <- "Use the approach names of the explanation objects as the names (with integer suffix for duplicates)."
 
-  cli::cli_inform(c("i" = msg1, " " = msg2))
+  cli::cli_bullets(c("i" = msg1, " " = msg2))
 
   return(explanation_list)
 }
@@ -1820,7 +1858,7 @@ update_only_these_features <- function(explanation_list,
         paste0("'", only_these_features_not_names, "'", collapse = ", "),
         "). The function skips non-valid feature names."
       )
-      cli::cli_inform(c("i" = msg))
+      cli::cli_bullets(c("i" = msg))
     }
 
     # Stop if we have no valid feature names.
@@ -1877,7 +1915,7 @@ extract_Shapley_values_dt <- function(explanation_list,
   if (length(index_explicands) > 12) {
     msg1 <- "It might be too many explicands to plot together in a nice fashion!"
     msg2 <- "Try for instance setting `index_explicands = 1:10` to limit the number of explicands."
-    cli::cli_inform(c("i" = msg1, " " = msg2))
+    cli::cli_bullets(c("i" = msg1, " " = msg2))
   }
 
   # Keep only the needed columns, and ensure that .id, .pred, and .method are included
@@ -1911,7 +1949,7 @@ update_axis_labels <- function(axis_labels_rotate_angle,
       )
       msg2 <- "The function sets `axis_labels_rotate_angle = 45` internally."
 
-      cli::cli_inform(c("i" = msg1, " " = msg2))
+      cli::cli_bullets(c("i" = msg1, " " = msg2))
 
       # Set it to rotate 45 degrees
       axis_labels_rotate_angle <- 45

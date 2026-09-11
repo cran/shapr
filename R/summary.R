@@ -72,7 +72,7 @@ summary.shapr <- function(object, digits = 2L, ...) {
   if (results$proglang == "R") {
     func_txt <- ifelse(results$calling_function == "explain", "{.fn shapr::explain}", "{.fn shapr::explain_forecast}")
   } else { # Python
-    func_txt <- ifelse(results$calling_function == "explain", "{.fn shaprpy.explain}", "{.fn shaprpy.explain_forecast}")
+    func_txt <- ifelse(results$calling_function == "explain", "{.fn pyshapr.explain}", "{.fn pyshapr.explain_forecast}")
   }
 
   init_time <- results$timing_summary$init_time
@@ -161,9 +161,7 @@ print.summary.shapr <- function(x, ...) {
 
   cli::cli_h3(msg)
 
-  # Using rlang::inform (bypassing cli-formatting) to print correctly
-  # Cannot use print as it does not obey suppressMessages()
-  rlang::inform(pd$formatted_shapley_info)
+  cli::cli_verbatim(pd$formatted_shapley_info)
 
   # MSEv info (only when using explain())
   if (x$calling_function == "explain") {

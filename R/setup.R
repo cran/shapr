@@ -17,7 +17,7 @@
 #' Indicates whether the function is called from the Python wrapper.
 #' Default is FALSE, which is never changed when calling the function via `explain()` in R.
 #' The parameter is later used to disallow running the AICc versions of the empirical method,
-#' as that requires data-based optimization, which is not supported in `shaprpy`.
+#' as that requires data-based optimization, which is not supported in `pyshapr`.
 #' @param testing Logical.
 #' Only used to remove random components, like timing, from the output when comparing with testthat.
 #' Defaults to `FALSE`.
@@ -60,6 +60,8 @@ setup <- function(x_train,
                   confounding = NULL,
                   output_args = list(),
                   extra_computation_args = list(),
+                  scope = "local",
+                  y_explain = NULL,
                   model_class,
                   ...) {
   internal <- list()
@@ -121,6 +123,7 @@ setup <- function(x_train,
     confounding = confounding,
     output_args = output_args,
     extra_computation_args = extra_computation_args,
+    scope = scope,
     model_class = model_class,
     ...
   )
@@ -129,7 +132,7 @@ setup <- function(x_train,
   if (type == "forecast") {
     internal$data <- get_data_forecast(y, xreg, train_idx, explain_idx, explain_y_lags, explain_xreg_lags, horizon)
   } else {
-    internal$data <- get_data(x_train, x_explain)
+    internal$data <- get_data(x_train, x_explain, y_explain)
   }
 
   internal$objects <- list(feature_specs = feature_specs)
@@ -198,6 +201,7 @@ get_parameters <- function(approach,
                            is_python,
                            output_args = list(),
                            extra_computation_args = list(),
+                           scope = "local",
                            testing = FALSE,
                            model_class = model_class,
                            ...) {
@@ -214,6 +218,11 @@ get_parameters <- function(approach,
   }
   if (!is.list(extra_computation_args)) {
     cli::cli_abort("`extra_computation_args` must be a list.")
+  }
+
+  # scope
+  if (!(is.character(scope) && length(scope) == 1 && !is.na(scope) && scope %in% c("local", "global"))) {
+    cli::cli_abort("`scope` must be either `local` or `global`.")
   }
 
 
@@ -329,6 +338,7 @@ get_parameters <- function(approach,
     causal_ordering = causal_ordering,
     confounding = confounding,
     model_class = model_class,
+    scope = scope,
     testing = testing
   )
 
@@ -383,7 +393,7 @@ check_verbose <- function(verbose) {
 }
 
 #' @keywords internal
-get_data <- function(x_train, x_explain) {
+get_data <- function(x_train, x_explain, y_explain = NULL) {
   # Check data object type
   stop_message <- NULL
   if (!is.matrix(x_train) && !is.data.frame(x_train)) {
@@ -412,7 +422,8 @@ get_data <- function(x_train, x_explain) {
 
   data <- list(
     x_train = data.table::as.data.table(x_train),
-    x_explain = data.table::as.data.table(x_explain)
+    x_explain = data.table::as.data.table(x_explain),
+    y_explain = y_explain
   )
 }
 
@@ -424,6 +435,9 @@ check_data <- function(internal) {
 
   x_train <- internal$data$x_train
   x_explain <- internal$data$x_explain
+
+  is_global <- internal$parameters$scope == "global"
+  y_explain <- internal$data$y_explain
 
   model_feature_specs <- internal$objects$feature_specs
 
@@ -443,7 +457,7 @@ check_data <- function(internal) {
         "`get_model_specs` function to {.fn shapr::explain}."
       )
       msg2 <- "Consistency checks between model and data are therefore disabled."
-      cli::cli_inform(c("i" = msg1, " " = msg2))
+      cli::cli_bullets(c("i" = msg1, " " = msg2))
     }
 
     model_feature_specs <- x_train_feature_specs
@@ -452,7 +466,7 @@ check_data <- function(internal) {
       msg1 <- "Feature names extracted from the model contain `NA`."
       msg2 <- "Consistency checks between model and data are therefore disabled."
 
-      cli::cli_inform(c("i" = msg1, " " = msg2))
+      cli::cli_bullets(c("i" = msg1, " " = msg2))
     }
 
     model_feature_specs <- x_train_feature_specs
@@ -460,7 +474,7 @@ check_data <- function(internal) {
     if ("basic" %in% verbose) {
       msg1 <- "Feature classes extracted from the model contain `NA`."
       msg2 <- "Assuming feature classes from the data are correct."
-      cli::cli_inform(c("i" = msg1, " " = msg2))
+      cli::cli_bullets(c("i" = msg1, " " = msg2))
     }
 
     model_feature_specs$classes <- x_train_feature_specs$classes
@@ -469,10 +483,26 @@ check_data <- function(internal) {
     if ("basic" %in% verbose) {
       msg1 <- "Feature factor levels extracted from the model contain `NA`."
       msg2 <- "Assuming feature factor levels from the data are correct."
-      cli::cli_inform(c("i" = msg1, " " = msg2))
+      cli::cli_bullets(c("i" = msg1, " " = msg2))
     }
 
     model_feature_specs$factor_levels <- x_train_feature_specs$factor_levels
+  }
+
+  # Check feature specs to ensure consistent number of features, classes, and factor levels
+  check_feature_specs(x_train_feature_specs)
+  check_feature_specs(x_explain_feature_specs)
+  check_feature_specs(model_feature_specs)
+
+  # Check the response vector `y_explain` when computing SAGE values
+  if (is_global) {
+    if (!(is.numeric(y_explain) && is.vector(y_explain) &&
+      !anyNA(y_explain) && length(y_explain) == nrow(x_explain))) {
+      cli::cli_abort(paste0(
+        "`y_explain` must be a numeric vector without `NA`s and with the same number of elements as there ",
+        "are rows in `x_explain` when `scope = \"global\"`."
+      ))
+    }
   }
 
   # Check model vs x_train (allowing different label ordering in specs from model)
@@ -480,6 +510,52 @@ check_data <- function(internal) {
 
   # Then x_train vs x_explain (requiring exact same order)
   compare_feature_specs(x_train_feature_specs, x_explain_feature_specs, "x_train", "x_explain")
+}
+
+#' @keywords internal
+check_feature_specs <- function(spec) {
+  if (is.null(spec$labels) || is.null(spec$classes) || is.null(spec$factor_levels)) {
+    cli::cli_abort("`feature_specs` must be a list with the elements `labels`, `classes`, and `factor_levels`.")
+  }
+  if (!is.character(spec$labels)) {
+    cli::cli_abort("`feature_specs$labels` must be a character vector.")
+  }
+  if (!(is.character(spec$classes) || all(is.na(spec$classes))) || is.null(names(spec$classes))) {
+    cli::cli_abort("`feature_specs$classes` must be a named character vector or contain only `NA` values.")
+  }
+  if (!is.list(spec$factor_levels) || is.null(names(spec$factor_levels))) {
+    cli::cli_abort("`feature_specs$factor_levels` must be a named list.")
+  }
+  # Check that the length of feature names, classes, and factor levels are consistent
+  if (!(length(spec$labels) == length(spec$classes) && length(spec$classes) == length(spec$factor_levels))) {
+    cli::cli_abort(c(
+      "The lengths of `labels`, `classes`, and `factor_levels` in `feature_specs` are not the same.",
+      "i" = paste0(
+        "`feature_specs$labels` has length ", length(spec$labels), ": ", paste(spec$labels, collapse = ", ")
+      ),
+      "i" = paste0(
+        "`feature_specs$classes` has length ", length(spec$classes),
+        ": ", paste(names(spec$classes), spec$classes, sep = "=", collapse = ", ")
+      ),
+      "i" = paste0(
+        "`feature_specs$factor_levels` has length ", length(spec$factor_levels), ": ",
+        paste(
+          vapply(
+            names(spec$factor_levels),
+            function(nm) {
+              lvls <- spec$factor_levels[[nm]]
+              lvls_str <- if (is.null(lvls)) "NULL" else paste(lvls, collapse = ", ")
+              paste0(nm, "={{", lvls_str, "}}")
+            },
+            character(1)
+          ),
+          collapse = ", "
+        )
+      )
+    ))
+  }
+
+  return(NULL)
 }
 
 #' @keywords internal
@@ -547,7 +623,7 @@ get_extra_parameters <- function(internal, type) {
     if (is.null(names(group))) {
       if ("basic" %in% verbose) {
         msg <- "Group names not provided. Assigning them the default names 'group1', 'group2', 'group3' etc."
-        cli::cli_inform(c("i" = msg))
+        cli::cli_bullets(c("i" = msg))
       }
       names(group) <- paste0("group", seq_along(group))
     }
@@ -603,7 +679,18 @@ get_extra_parameters <- function(internal, type) {
 get_data_specs <- function(x) {
   feature_specs <- list()
   feature_specs$labels <- names(x)
-  feature_specs$classes <- unlist(lapply(x, class))
+  # Want only one class per feature, but if we have multiple classes, we want to make sure to catch
+  # factors by checking for "factor" in the class vector, and otherwise just take the first class.
+  feature_specs$classes <- vapply(x, function(col) {
+    cl <- class(col)
+    if ("Date" %in% cl) {
+      "Date"
+    } else if ("factor" %in% cl) {
+      "factor"
+    } else {
+      cl[1]
+    }
+  }, character(1))
   feature_specs$factor_levels <- lapply(x, levels)
 
   # Defining all integer values as numeric
@@ -618,6 +705,7 @@ check_and_set_parameters <- function(internal, type) {
   confounding <- internal$parameters$confounding
   asymmetric <- internal$parameters$asymmetric
   regression <- internal$parameters$regression
+  is_global <- internal$parameters$scope == "global"
   m <- internal$parameters$n_shapley_values
 
   if (type == "forecast") {
@@ -665,6 +753,9 @@ check_and_set_parameters <- function(internal, type) {
   internal <- set_exact(internal)
 
   internal <- set_extra_comp_params(internal)
+
+  # Set the SAGE-specific parameters (loss function and baseline loss) when computing SAGE values
+  if (is_global) internal <- set_global_parameters(internal)
 
   # Give warnings to the user about long computation times
   check_computability(internal)
@@ -852,7 +943,7 @@ adjust_max_n_coalitions <- function(internal) {
           "`max_n_coalitions` is `NULL` or larger than the number of coalitions respecting the causal ",
           "ordering (", max_n_coalitions_causal, "), and is therefore set to ", max_n_coalitions_causal, "."
         )
-        cli::cli_inform(c("i" = msg))
+        cli::cli_bullets(c("i" = msg))
       }
     }
 
@@ -867,7 +958,7 @@ adjust_max_n_coalitions <- function(internal) {
             "so few unique causal coalitions that we should use all to get reliable results."
           )
           msg2 <- paste0("`max_n_coalitions` is therefore set to ", max_n_coalitions_causal, ".")
-          cli::cli_inform(c("i" = msg1, " " = msg2))
+          cli::cli_bullets(c("i" = msg1, " " = msg2))
         }
       } else {
         max_n_coalitions <- min(10, n_shapley_values + 1, max_n_coalitions_causal)
@@ -878,7 +969,7 @@ adjust_max_n_coalitions <- function(internal) {
             ", max_n_coalitions_causal = ", max_n_coalitions_causal, ")`, which will result in unreliable results."
           )
           msg2 <- paste0("It is therefore set to ", min(10, n_shapley_values + 1, max_n_coalitions_causal), ".")
-          cli::cli_inform(c("i" = msg1, " " = msg2))
+          cli::cli_bullets(c("i" = msg1, " " = msg2))
         }
       }
     }
@@ -894,7 +985,7 @@ adjust_max_n_coalitions <- function(internal) {
             "`max_n_coalitions` is `NULL` or larger than `2^n_features = ", 2^n_features, "`, ",
             "and is therefore set to `2^n_features = ", 2^n_features, "`."
           )
-          cli::cli_inform(c("i" = msg))
+          cli::cli_bullets(c("i" = msg))
         }
       }
       # Set max_n_coalitions to lower bound
@@ -907,7 +998,7 @@ adjust_max_n_coalitions <- function(internal) {
               2^n_features, ") that we should use all to get reliable results."
             )
             msg2 <- paste0("`max_n_coalitions` is therefore set to `2^n_features = ", 2^n_features, "`.")
-            cli::cli_inform(c("i" = msg1, " " = msg2))
+            cli::cli_bullets(c("i" = msg1, " " = msg2))
           }
         } else {
           max_n_coalitions <- min(10, n_features + 1)
@@ -917,7 +1008,7 @@ adjust_max_n_coalitions <- function(internal) {
               "which will result in unreliable results."
             )
             msg2 <- paste0("It is therefore set to ", min(10, n_features + 1), ".")
-            cli::cli_inform(c("i" = msg1, " " = msg2))
+            cli::cli_bullets(c("i" = msg1, " " = msg2))
           }
         }
       }
@@ -930,7 +1021,7 @@ adjust_max_n_coalitions <- function(internal) {
             "`max_n_coalitions` is `NULL` or larger than `2^n_groups = ", 2^n_shapley_values, "`, ",
             "and is therefore set to `2^n_groups = ", 2^n_shapley_values, "`."
           )
-          cli::cli_inform(c("i" = msg))
+          cli::cli_bullets(c("i" = msg))
         }
       }
       # Set max_n_coalitions to lower bound
@@ -943,7 +1034,7 @@ adjust_max_n_coalitions <- function(internal) {
               2^n_shapley_values, ") that we should use all to get reliable results."
             )
             msg2 <- paste0("`max_n_coalitions` is therefore set to `2^n_groups = ", 2^n_shapley_values, "`.")
-            cli::cli_inform(c("i" = msg1, " " = msg2))
+            cli::cli_bullets(c("i" = msg1, " " = msg2))
           }
         } else {
           max_n_coalitions <- min(10, n_shapley_values + 1)
@@ -953,7 +1044,7 @@ adjust_max_n_coalitions <- function(internal) {
               " which will result in unreliable results."
             )
             msg2 <- paste0("It is therefore set to ", min(10, n_shapley_values + 1), ".")
-            cli::cli_inform(c("i" = msg1, " " = msg2))
+            cli::cli_bullets(c("i" = msg1, " " = msg2))
           }
         }
       }
@@ -1075,6 +1166,64 @@ check_output_args <- function(output_args) {
 }
 
 
+#' Set the global (SAGE) parameters in `internal`
+#'
+#' @details Reads the loss function from `extra_computation_args$global_loss_func`, resolves the default loss
+#' function (logistic loss for binary responses, mean squared error otherwise) when none is supplied, and
+#' stores both the loss function and the baseline loss `zero_loss = -loss_func(y_explain, phi0)` in `internal`.
+#'
+#' @inheritParams default_doc_internal
+#' @return The (updated) `internal` list.
+#' @author Martin Jullum
+#' @keywords internal
+set_global_parameters <- function(internal) {
+  phi0 <- internal$parameters$phi0
+  y_explain <- internal$data$y_explain
+
+  loss_func <- internal$parameters$extra_computation_args$global_loss_func
+
+  # Resolve the default loss function when the user has not supplied one
+  if (is.null(loss_func)) {
+    loss_func <- if (all(y_explain %in% c(0, 1))) log_loss else mse_loss
+  }
+
+  internal$parameters$extra_computation_args$global_loss_func <- loss_func
+  internal$parameters$loss_func <- loss_func
+
+  # Baseline loss (the value of the empty coalition), used as the `none` value and the waterfall plot baseline
+  internal$parameters$zero_loss <- -loss_func(y_explain, phi0)
+
+  return(internal)
+}
+
+#' Logistic (Cross-Entropy) Loss
+#'
+#' @param y Numeric vector of true binary responses (values in 0/1).
+#' @param pred Numeric vector (or scalar) of predicted probabilities.
+#'
+#' @return The mean logistic loss as a single numeric value.
+#' @keywords internal
+#' @author Martin Jullum
+log_loss <- function(y, pred) {
+  # Clamp the predictions away from 0 and 1 to avoid taking log(0)
+  eps <- 1e-15
+  pred <- pmin(pmax(pred, eps), 1 - eps)
+
+  return(-mean(y * log(pred) + (1 - y) * log(1 - pred)))
+}
+
+#' Mean Squared Error Loss
+#'
+#' @param y Numeric vector of true responses.
+#' @param pred Numeric vector (or scalar) of predictions.
+#'
+#' @return The mean squared error as a single numeric value.
+#' @keywords internal
+#' @author Martin Jullum
+mse_loss <- function(y, pred) {
+  return(mean((pred - y)^2))
+}
+
 #' @author Martin Jullum and Lars Henry Berge Olsen
 #' @keywords internal
 set_extra_comp_params <- function(internal) {
@@ -1185,6 +1334,21 @@ check_and_set_sampling_info <- function(internal) {
 #' @param min_n_batches Integer. The minimum number of batches to split the computation into within each iteration.
 #' Larger numbers give more frequent progress updates. If parallelization is applied, this should be set no smaller
 #' than the number of parallel workers.
+#' @param max_batch_cube_size Numeric. The largest number of elements allowed in the dense per-batch array
+#' built by the `gaussian`, `copula` and `empirical` approaches. For `gaussian` and `copula` this array has a total of
+#' `n_MC_samples * n_explain * coalitions_per_batch * n_features` elements, while for `empirical` it is the distance
+#' array with `n_train * n_explain * coalitions_per_batch` elements. When a batch would exceed this, the batch size is
+#' automatically reduced (i.e. more batches are used) and a message is given. The default `1e6` keeps peak memory
+#' modest and tends to reduce runtime in high-dimensional settings, while staying far below the 32-bit indexing limit
+#' of the underlying `RcppArmadillo` arrays (which fails with `Cube::init(): requested size is too large`). Raise it
+#' to allow larger batches, or lower it to use even smaller ones.
+#' @param global_loss_func Function or `NULL`.
+#' Only used when `scope = "global"` (i.e. when computing SAGE values).
+#' The loss function used to measure the model loss when computing the SAGE values.
+#' Must take two arguments, the true response and the model prediction (in that order), and return a single numeric
+#' loss value.
+#' If `NULL` (default), logistic (cross-entropy) loss is used for binary responses (values in 0/1) and mean squared
+#' error loss otherwise.
 #' @inheritParams default_doc_export
 #' @export
 #'
@@ -1203,7 +1367,9 @@ get_extra_comp_args_default <- function(internal, # Only used to get the default
                                         n_boot_samps = 100,
                                         vS_batching_method = "future",
                                         max_batch_size = 10,
-                                        min_n_batches = 10) {
+                                        min_n_batches = 10,
+                                        max_batch_cube_size = 1e6,
+                                        global_loss_func = NULL) {
   return(mget(methods::formalArgs(get_extra_comp_args_default)[-1])) # [-1] to exclude internal
 }
 
@@ -1214,6 +1380,11 @@ check_extra_computation_args <- function(extra_computation_args) {
   # paired_shap_sampling
   if (!is.logical(paired_shap_sampling) && length(paired_shap_sampling) == 1) {
     cli::cli_abort("`paired_shap_sampling` must be a single logical.")
+  }
+
+  # global_loss_func
+  if (!is.null(global_loss_func) && !(is.function(global_loss_func) && length(formals(global_loss_func)) == 2)) {
+    cli::cli_abort("`extra_computation_args$global_loss_func` must be `NULL` or a function of exactly two arguments.")
   }
 
   # semi_deterministic_sampling
@@ -1264,6 +1435,15 @@ check_extra_computation_args <- function(extra_computation_args) {
       min_n_batches > 0)) {
     cli::cli_abort("`extra_computation_args$min_n_batches` must be NULL or a single positive integer.")
   }
+
+  # max_batch_cube_size
+  if (!is.null(max_batch_cube_size) &&
+    !(is.numeric(max_batch_cube_size) &&
+      length(max_batch_cube_size) == 1 &&
+      !is.na(max_batch_cube_size) &&
+      max_batch_cube_size > 0)) {
+    cli::cli_abort("`extra_computation_args$max_batch_cube_size` must be NULL or a single positive number.")
+  }
 }
 
 #' @keywords internal
@@ -1273,6 +1453,9 @@ trans_null_extra_est_args <- function(extra_computation_args) {
   # Translating NULL to always return n_batches = 1 (if just one approach)
   extra_computation_args$min_n_batches <- ifelse(is.null(min_n_batches), 1, min_n_batches)
   extra_computation_args$max_batch_size <- ifelse(is.null(max_batch_size), Inf, max_batch_size)
+  extra_computation_args$max_batch_cube_size <- ifelse(is.null(max_batch_cube_size), 1e6,
+    max_batch_cube_size
+  )
 
   return(extra_computation_args)
 }
@@ -1338,6 +1521,8 @@ check_computability <- function(internal) {
   n_features <- internal$parameters$n_features
   n_groups <- internal$parameters$n_groups
   exact <- internal$parameters$exact
+  approach <- internal$parameters$approach
+  vS_batching_method <- internal$parameters$extra_computation_args$vS_batching_method
   causal_sampling <- internal$parameters$causal_sampling # NULL if regular/symmetric Shapley values
   asymmetric <- internal$parameters$asymmetric # NULL if regular/symmetric Shapley values
   max_n_coalitions_causal <- internal$parameters$max_n_coalitions_causal # NULL if regular/symmetric Shapley values
@@ -1403,6 +1588,30 @@ check_computability <- function(internal) {
       )
       cli::cli_warn(c("!" = msg), immediate. = TRUE)
     }
+  }
+
+  # The `vaeac` approach uses `torch`, whose model/tensor objects cannot be exported to separate R processes.
+  # Abort early if a serializing multi-worker `future` plan (multisession/cluster) is active.
+  if (any(grepl("vaeac", approach, fixed = TRUE)) &&
+    vS_batching_method == "future" &&
+    future::nbrOfWorkers() > 1L &&
+    inherits(future::plan(), c("multisession", "cluster"))) {
+    cli::cli_abort(
+      c(
+        "!" = paste0(
+          "The {.val vaeac} approach relies on {.pkg torch} external pointers that cannot be exported to separate ",
+          "R processes, so {.pkg future} {.val multisession} and {.val cluster} plans are unsupported."
+        ),
+        "i" = paste0(
+          "The only parallel option is {.code future::plan(future::multicore)}, which is unavailable on Windows ",
+          "and within RStudio."
+        ),
+        "i" = paste0(
+          "For sequential computation, use {.code future::plan(future::sequential)} or set ",
+          "{.code extra_computation_args = list(vS_batching_method = \"forloop\")} in {.fn explain}."
+        )
+      )
+    )
   }
 }
 
@@ -1587,8 +1796,8 @@ set_iterative_parameters <- function(internal, prev_iter_list = NULL) {
     iterative_args$initial_n_coalitions <- ceiling(iterative_args$initial_n_coalitions * 0.5) * 2
   }
 
-  # Update exact if initial_n_coalitions was set to be equal to or larger than n_shapley_values^2
-  if (iterative_args$initial_n_coalitions >= internal$parameters$n_shapley_values^2) {
+  # Update exact if initial_n_coalitions is at least the total number of coalitions (2^n_shapley_values)
+  if (iterative_args$initial_n_coalitions >= 2^internal$parameters$n_shapley_values) {
     internal$parameters$exact <- TRUE
     internal$parameters$extra_computation_args$compute_sd <- FALSE
   }
@@ -1699,6 +1908,50 @@ trans_null_iterative_args <- function(iterative_args) {
   return(iterative_args)
 }
 
+
+#' Cap the batch size to keep the dense per-batch sampling array within limits
+#'
+#' Some approaches build a dense per-batch array (an `RcppArmadillo` cube) whose number of elements grows with the
+#' number of coalitions in the batch. For the `gaussian` and `copula` approaches this array has a total of
+#' `n_MC_samples * n_explain * coalitions_per_batch * n_features` elements, while the `empirical` approach builds a
+#' distance array with `n_train * n_explain * coalitions_per_batch` elements. With many features, explicands, training
+#' observations or coalitions, this can exceed the 32-bit indexing limit of the underlying `RcppArmadillo` arrays
+#' (failing with `Cube::init(): requested size is too large`) or simply demand excessive memory. This helper reduces
+#' `max_batch_size` (i.e. uses more batches) so that no single batch exceeds `max_batch_cube_size` elements. Note that
+#' parallelization (`workers > 1`) increases total memory because several batches are held at once, but each individual
+#' array still fits, so the limit is enforced per batch and is unaffected by the number of workers.
+#'
+#' @param per_coalition_size Numeric. The number of dense array elements contributed by a single coalition for the
+#' current approach (i.e. the per-batch array size divided by `coalitions_per_batch`).
+#' @inheritParams default_doc_internal
+#' @return The (possibly modified) `internal` list.
+#' @keywords internal
+cap_dense_batch_size <- function(internal, per_coalition_size) {
+  max_batch_cube_size <- internal$parameters$extra_computation_args$max_batch_cube_size
+  max_batch_size <- internal$parameters$extra_computation_args$max_batch_size
+  verbose <- internal$parameters$verbose
+
+  # Largest number of coalitions whose dense array stays within the element limit.
+  max_coalitions_per_batch <- max(1, floor(max_batch_cube_size / per_coalition_size))
+
+  if (max_coalitions_per_batch < max_batch_size) {
+    if (!is.null(verbose) && "basic" %in% verbose) {
+      cli::cli_bullets(c(
+        "i" = paste0(
+          "Capped {.arg max_batch_size} from {.val {max_batch_size}} to {.val {max_coalitions_per_batch}} so each ",
+          "batch array stays under {.arg max_batch_cube_size} = {.val {max_batch_cube_size}} elements."
+        )
+      ))
+    }
+    internal$parameters$extra_computation_args$max_batch_size <- max_coalitions_per_batch
+
+    # Recompute the current iteration's batch count, as it was set before this cap was known.
+    iter <- length(internal$iter_list)
+    internal$iter_list[[iter]]$n_batches <- set_n_batches(internal$iter_list[[iter]]$n_coalitions, internal)
+  }
+
+  return(internal)
+}
 
 #' @keywords internal
 set_n_batches <- function(n_coalitions, internal) {

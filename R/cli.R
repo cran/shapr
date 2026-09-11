@@ -155,9 +155,16 @@ format_info_extra <- function(internal) {
 cli_compute_vS <- function(internal) {
   verbose <- internal$parameters$verbose
   approach <- internal$parameters$approach
+  iter <- length(internal$iter_list)
 
+  if ("basic" %in% verbose) {
+    n_batches <- length(internal$iter_list[[iter]]$S_batch)
+    new_n_coalitions <- internal$iter_list[[iter]]$new_n_coalitions
+    mean_batch_size <- round(new_n_coalitions / n_batches, 1)
+    cli::cli_alert_info("Coalitions split into {.val {n_batches}} batches (mean {.val {mean_batch_size}} per batch). ")
+  }
   if ("progress" %in% verbose) {
-    cli::cli_progress_step("Computing v(S)")
+    cli::cli_progress_step("Computing v(S)", .envir = parent.frame())
   }
   if ("vS_details" %in% verbose) {
     if ("regression_separate" %in% approach) {
@@ -364,9 +371,7 @@ print_iter <- function(internal) {
       msg <- paste0(msg, "estimated Shapley values (sd)")
     }
 
-    # Send it to rlang::inform (bypassing cli-formatting) to print correctly
-    # Cannot use print as it does not obey suppressMessages()
-    rlang::inform(paste0("\n", msg, "\n", formatted_shapley_info))
+    cli::cli_verbatim(paste0("\n", msg, "\n", formatted_shapley_info))
   }
 }
 
